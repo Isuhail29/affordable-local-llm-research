@@ -17,7 +17,7 @@ import time
 
 import numpy as np
 
-CHUNK_SIZES = [256 * 1024, 1024 * 1024, 4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024]
+CHUNK_SIZES = [16 * 1024, 32 * 1024, 64 * 1024, 128 * 1024, 256 * 1024, 1024 * 1024, 4 * 1024 * 1024]
 BYTES_PER_WORKER = 1536 * 1024 * 1024  # ~1.5 GiB read per worker per config
 ALIGN = 4096
 

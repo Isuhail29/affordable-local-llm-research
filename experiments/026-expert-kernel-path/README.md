@@ -41,4 +41,35 @@ Three source-study agents are reading the actual b10064 tree (sgemm support matr
 
 ## Actual Result
 
-(pending)
+All measurements pure-CPU 30B (-ngl 0 -t 12, warm, r=3) on our source build unless noted:
+
+| Probe | Result | Verdict |
+|---|---|---|
+| mmap on vs off (repack evidence via -v) | 19.46 vs 18.46 t/s; CPU_REPACK buffer 13.4 GB ACTIVE in both | Repack was already live in every pure-CPU run |
+| Repack vs no-repack (GGML_NO_REPACK switch, verified 579 tensors fell back) | 19.46 vs **20.14** t/s | **The 8x8 gemv kernel is worth ~nothing here; H1 falsified at its threshold** |
+| Hybrid plain (-ncmoe 40, -v) | 31.04 t/s, NO repack line | Shipped config runs naive kernels on experts, as theorized |
+| Hybrid + -ot CPU_REPACK (our unlock patch) | **crashes in b10064** (exit 0xC0000005-class at first expert repack, mmap on or off) | Real upstream-era bug in 3D-tensor repack under the hybrid CUDA context; documented, not chased (kernel A/B made it moot) |
+| Fine-grained access curve (scatter-bench v3, 12 workers) | 16K: 36.2 / 32K: 54.6 / 64K: 59.9 / 128K: 64.5 / 256K+: ~67-68 GB/s | llama.cpp's real ~74 KB per-thread runs sit at ~60 GB/s capability; granularity mostly innocent (and retroactively validates E025's null: chunk-16's smaller runs did not tank) |
+
+## Benchmark analysis
+
+Four mechanisms now eliminated by direct measurement: sgemm absence (types+guards make it irrelevant), barrier stragglers (E025), repack-vs-naive kernel choice (identical throughput), and access-run granularity (curve says ~60 GB/s available at actual run sizes). Node fixed overheads remain bounded to a minority (~2 of ~13-16 ms, notes/e026-mmid-overhead.md), and the E013 ncmoe ladder's marginal slope (~0.65 ms/layer vs 0.46 predicted at dense extraction) shows the deficit is in per-layer marginal work, not a fixed tax.
+
+**Honest state: roughly 13 ms/token of the pure-CPU MoE budget is not yet attributed.** The compiler-sensitivity clue (MSVC 10% slower) still says compute, but both tested kernels tie, which points at something common upstream of both: the driver loop, activation handling, or an interaction not visible to instruction counting. Guessing further would waste benchmarks; the next instrument is attribution, not hypothesis.
+
+## Lessons Learned
+
+1. Pre-registered falsification thresholds turned four attractive theories into fast, cheap deaths. The alternative was implementing each "fix" and discovering nothing, weeks later.
+2. Verify feature engagement from logs, never from flags or docs: repack was silently ON where assumed OFF (pure CPU) and OFF where hoped ON (hybrid), in the same binary.
+3. A benchmark's untested region is an unfounded verdict: E021 said "scatter is innocent" but had only probed >= 0.25 MB; the 16 KB cliff existed below its floor (and this time it acquitted rather than convicted).
+4. Negative results compound into positive knowledge: we now possess the complete map of what does NOT cause the deficit, two reusable instruments (GGML_NO_REPACK switch, fine-grained scatter-bench), a documented b10064 crash bug, and a single sharp question for E027.
+
+## Possible Improvements
+
+- The -ot unlock patches (arg.cpp, llama-bench.cpp) and the GGML_NO_REPACK switch stay in our tree as lab instruments (patches/e026-*.patch).
+- llama.cpp master is already cloned (llama.cpp-master/) for checking whether the hybrid repack crash is fixed upstream and whether newer repack controls change the picture.
+
+## Next Steps
+
+- **E027: cycle attribution.** Instrument ggml-cpu.c with per-op-type wall-time accumulation (rdtsc around node execution, print at exit; ~30 lines) and profile one pure-CPU decode: how do 50 ms/token actually split across mul_mat_id / mul_mat / quantize / barriers / glue ops? The unattributed 13 ms has to show its address.
+- Ship nothing from E026: the official binary remains faster (Clang) and the shipped launchers are unaffected.
