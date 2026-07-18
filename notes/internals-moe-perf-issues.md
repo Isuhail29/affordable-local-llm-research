@@ -1,0 +1,46 @@
+# llama.cpp CPU MoE performance: issues, PRs, and proposals (2024-2026)
+
+Survey of llama.cpp GitHub activity relevant to our measured gap: expert reads pulling ~34 GB/s from RAM whose practical ceiling is 55.6 GB/s (dense streaming reaches 50.8 GB/s) on Qwen3-30B-A3B with `-ngl 99 --n-cpu-moe 40`.
+
+## How the CPU MoE path actually works
+
+The graph side lives in `llm_graph_context::build_moe_ffn` (`src/llama-graph.cpp`): router matmul, softmax, `ggml_top_k`, then three `ggml_mul_mat_id` calls (gate, up, down) plus the activation and a weighted reduce. The CPU kernel is `ggml_compute_forward_mul_mat_id` (historically in `ggml/src/ggml-cpu/ggml-cpu.c`; exact file is version dependent after the ggml-cpu refactors, so check your b10064 tree).
+
+Per op, the kernel: (1) quantizes the activations to the vec_dot type (Q8_K for Q4_K weights), (2) builds a `matrix_rows` mapping that groups token rows by expert ID, (3) loops over experts, running a matmul over each expert's assigned rows, with `ggml_barrier` synchronization between phases and between ops. At decode (1 token, 8 active experts) this means many small matvecs per layer, each roughly 1 MB of weights, instead of one large streaming pass.
+
+## Merged changes, in chronological order
+
+- [#4406](https://github.com/ggml-org/llama.cpp/pull/4406) (Dec 2023): Mixtral support introduced `ggml_mul_mat_id` and the MoE FFN graph. Original design used one tensor per expert.
+- [#6387](https://github.com/ggml-org/llama.cpp/pull/6387) (Apr 2024, slaren): "ggml : update mul_mat_id to use the same tensor for all the experts". Experts became a single 3D tensor per projection, removing per-expert tensor overhead and enabling many-expert models (Qwen2 MoE class, which is our model family).
+- [#8672](https://github.com/ggml-org/llama.cpp/pull/8672) (Aug 2024): persistent threadpool with `--cpu-mask`, `--cpu-strict`, `--poll`, `--prio`. Matters for MoE because CPU work is fragmented into many short ops; thread wake/sleep and placement overhead is paid per op. Discussion [#9996](https://github.com/ggml-org/llama.cpp/discussions/9996) covers pinning to physical cores.
+- [#11666](https://github.com/ggml-org/llama.cpp/pull/11666) (Feb 2025, slaren): "ggml-cpu : add chunking support to mul_mat_id". Added dynamic chunk scheduling (atomic chunk counter) matching plain `mul_mat`, and parallelized activation quantization by column so single-row (decode) cases still spread across threads. Up to 1.95x PP on a 13900K at 16 threads; disabled on aarch64 and NUMA after regressions. slaren noted chunk size significantly affects results and that heterogeneous-core systems (like our 8P+8E i7-14650HX) benefit most from dynamic scheduling, while uniform ones can lose to sync overhead.
+- [#11397](https://github.com/ggml-org/llama.cpp/pull/11397) (2025, slaren): `--override-tensor`, the mechanism behind keeping experts in RAM (`-ot exps=CPU`).
+- [#15077](https://github.com/ggml-org/llama.cpp/pull/15077) (Aug 2025, slaren): `--cpu-moe` / `--n-cpu-moe`, a convenience wrapper over tensor overrides that counts expert layers to keep on CPU. Multi-GPU variant requested in [#15263](https://github.com/ggml-org/llama.cpp/issues/15263).
+- [#20910](https://github.com/ggml-org/llama.cpp/pull/20910) (2026): fixed [#20492](https://github.com/ggml-org/llama.cpp/issues/20492), where the `--fit on` auto-placement halved TG and PP on models with merged (fused) gate+up expert tensors; manual `--n-cpu-moe` / `-ot` was the workaround.
+- [#22423](https://github.com/ggml-org/llama.cpp/pull/22423) (2026): first CPU backend operator fusion (RMS_NORM+MUL), out of discussion [#22315](https://github.com/ggml-org/llama.cpp/discussions/22315), where collaborator am17an pushed graph-plan level fusion as the longer-term direction. Gated FFN fusion is the stated next target.
+
+## Directly on-point but not merged (verify current status)
+
+- [#20596](https://github.com/ggml-org/llama.cpp/pull/20596) (am17an): "ggml-cpu: improve `--n-cpu-moe` TG performance". Adds a specialized single-token path for gated MoE FFN that skips building the row mapping and removes barriers between the gate/up/activation ops. 4-8% TG gains on EPYC 9B14, roughly neutral on M2 Ultra and Ryzen 9. Reviewers questioned how much barrier cost actually dominates. This PR is the clearest maintainer-adjacent confirmation that per-op setup and barrier overhead is a real tax on exactly our configuration.
+- [#20757](https://github.com/ggml-org/llama.cpp/issues/20757) (Mar 2026): two-tier GPU+RAM expert cache proposal (SLRU eviction, hot experts pinned in VRAM). Motivated by routing skew (~15-20% of experts serve ~80% of tokens). No maintainer commitment or linked PR at the time surveyed. Related: [#19528](https://github.com/ggml-org/llama.cpp/issues/19528) `--expert-override` request, and the much older [#4667](https://github.com/ggml-org/llama.cpp/issues/4667) asking for finer-grained MoE offload.
+- NUMA mirroring ([discussion #12289](https://github.com/ggml-org/llama.cpp/discussions/12289), [discussion #19102](https://github.com/ggml-org/llama.cpp/discussions/19102)): replicating weights per NUMA node lifted dual-socket TG substantially (QwQ-32B FP16 6.6 to 10.7 t/s in one report). Not relevant to our single-socket laptop, but it is the main line of "extract more bandwidth" work upstream.
+
+## Why MoE CPU decode underperforms dense streaming: what the record supports
+
+1. **Work fragmentation and synchronization.** Decode on our model issues 3 `mul_mat_id` ops x 40 CPU layers = 120 small ops per token, each internally split per expert (8 active), each fenced by barriers, plus per-op activation quantization. #11666 and #20596 both attack exactly this; #20596's author explicitly credits removed barriers and skipped row-mapping for its gains. Dense streaming has none of this structure.
+2. **Hybrid P/E core imbalance.** Before dynamic chunking, a slow E-core set the pace of every barrier. #11666's dynamic scheduling helps but chunk granularity on 768-row expert matvecs is coarse, and slaren said chunk size may need per-CPU tuning.
+3. **Scheduler split bubbles in hybrid offload.** With attention on GPU and experts on CPU, `ggml_backend_sched` cuts the graph into alternating CPU/GPU splits with host-device copies and sync at every boundary (roughly 40 round trips per token for us). During GPU attention the CPU expert path reads nothing, so bandwidth averaged over the whole token understates kernel-level bandwidth. This is a property of the design, not a bug with a PR; it is why the expert-cache and "offload less often" proposals exist. (Our own analysis; consistent with #20757's framing.)
+4. **Random access defeats prefetch and mmap.** Expert reads hop across the file rather than streaming. Community guidance and [discussion #18758](https://github.com/ggml-org/llama.cpp/discussions/18758) cover mmap page-fault and layout effects for MoE; `--no-mmap` (fully resident malloc memory) removes fault jitter at the cost of load time.
+5. **Quant kernel efficiency.** Q4_K x Q8_K vec_dot does real compute per byte; a single E-core cannot saturate its share of DDR5 while dequantizing. The ik_llama.cpp fork ([repo](https://github.com/ikawrakow/ik_llama.cpp)) demonstrates the headroom: run-time repack to row-interleaved formats (`-rtr`, `_R4`/`_R8` quants) plus fused up+gate+activation MoE kernels (`-fmoe`) are reported around 1.9x mainline on MoE CPU TG in issue [#19480](https://github.com/ggml-org/llama.cpp/issues/19480). Mainline has no fused MoE FFN kernel yet (#20596 is the first step).
+6. **Bandwidth-math gap reports upstream.** [#19480](https://github.com/ggml-org/llama.cpp/issues/19480) documents a Zen 5 + DDR5-5600 machine getting 7.7 t/s where naive bandwidth math predicts 20-30+, i.e. the same ~40-60% extraction efficiency we measure. Note its model (Qwen3-Next) has extra architecture confounders, but the pattern matches ours. No definitive maintainer root-cause statement is recorded there.
+
+## Actionable for our setup
+
+1. **Test a build containing #20596** (or the PR branch): it targets `--n-cpu-moe` TG specifically; expected single-digit percent.
+2. **Thread and affinity sweep with threadpool flags**: compare `-t 8 --cpu-strict 1 --cpu-mask` (P-cores only) vs 16 threads, and raise `--poll` so threads spin through the GPU splits instead of sleeping and waking 40 times per token.
+3. **`--no-mmap` (and optionally `--mlock`)** to take page-fault handling out of the expert-read path on Windows.
+4. **A/B against ik_llama.cpp** with `-fmoe -rtr` on the same GGUF: if it recovers most of the gap, the deficit is kernel and fusion, not DRAM.
+5. **Isolate scheduler bubbles**: run pure CPU (`-ngl 0`) and recompute expert GB/s; if pure CPU extracts much more than 34 GB/s, the hybrid split sync is the main loss and fewer, larger contiguous CPU spans (`--n-cpu-moe` boundary placement) matter more than kernels.
+6. **Watch #20757 and the CPU fusion track (#22315/#22423)**: expert caching plus gated-FFN fusion are the two upstream efforts most likely to move our number.
+
+Uncertainty notes: PR/issue numbers above #20000 are from 2026 and were checked against GitHub search snippets, not full threads; #20596 was still open when surveyed; exact source file locations for `mul_mat_id` vary across 2025-2026 refactors.

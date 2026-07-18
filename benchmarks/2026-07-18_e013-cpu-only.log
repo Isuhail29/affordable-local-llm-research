@@ -1,0 +1,4 @@
+ggml_cuda_init: failed to initialize CUDA: no CUDA-capable device is detected
+load_backend: loaded CUDA backend from C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\ggml-cpu-alderlake.dll

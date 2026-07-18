@@ -1,0 +1,627 @@
+﻿# Transformer Architecture for Inference
+
+## What you will learn
+
+This document walks through the decoder-only transformer as it actually executes during inference, using Qwen3-8B (36 layers, 8.2B parameters) as the running example on our research machine. You will learn what each building block computes: token embeddings, the residual stream, grouped-query self-attention, the SwiGLU feed-forward network, RMSNorm, and the output head. You will see a full parameter accounting that derives, matrix by matrix, where all 8,190,735,360 parameters live. By the end you should be able to trace one token through one decoder layer by hand and predict, from memory bandwidth alone, roughly how fast this machine can generate tokens.
+
+## The shape of the model: a stack of 36 identical layers
+
+A modern LLM is architecturally boring, and that is a gift for optimization work. Qwen3-8B is:
+
+1. One embedding table that turns token ids into vectors.
+2. A stack of 36 identical decoder layers, each containing a self-attention block and a feed-forward block.
+3. One final RMSNorm and one output projection (the "head") that turns the last vector back into a probability distribution over the vocabulary.
+
+Every layer has exactly the same shapes and the same code path. When llama.cpp runs the model, it executes the same small set of kernels 36 times with different weight tensors. Understand one layer and you understand 85 percent of the parameters and nearly all of the runtime.
+
+```mermaid
+flowchart TB
+    T["Input token ids"] --> E["Token embedding table<br/>151,936 x 4,096"]
+    E --> L1["Decoder layer 1"]
+    L1 --> L2["Decoder layer 2"]
+    L2 --> DOTS["... layers 3 to 35 ..."]
+    DOTS --> L36["Decoder layer 36"]
+    L36 --> FN["Final RMSNorm"]
+    FN --> H["Output head<br/>4,096 x 151,936"]
+    H --> P["Logits: one score per vocabulary token"]
+```
+
+The key dimensions of Qwen3-8B, which we will use in every calculation below:
+
+```
+Hyperparameter              Value
+-----------------------------------
+Hidden size (d_model)       4,096
+Decoder layers              36
+Query heads                 32
+KV heads (GQA)              8
+Head dimension              128
+FFN intermediate size       12,288
+Vocabulary size             151,936
+Max context (native)        32,768
+Embedding/head tying        No (separate matrices)
+```
+
+## Token embeddings: from ids to vectors
+
+The tokenizer (byte-pair encoding) converts text into integer ids in the range 0 to 151,935. The embedding table is a matrix of shape 151,936 x 4,096. "Embedding lookup" is literally reading row number `token_id` out of that matrix. There is no matrix multiplication here, just a memory copy of one 4,096-element row per token.
+
+This asymmetry matters for inference cost. The embedding table holds 622 million parameters, but per generated token you touch only one row of it: 4,096 values, about 8 KB at FP16 and only a few KB quantized. Compare that with the output head at the other end of the model, which is the same size but must be read in full for every token. Same parameter count, wildly different bandwidth cost.
+
+## The residual stream
+
+After embedding, the token is a 4,096-dimensional vector. That vector, called the residual stream, is the model's shared workspace. Every layer follows the same pattern:
+
+- Read the stream, normalize a copy of it.
+- Compute something (attention or FFN).
+- Add the result back into the stream.
+
+Nothing ever overwrites the stream. Layers communicate only by adding vectors into this one 4,096-dimensional channel, and later layers read the accumulated sum of everything earlier layers wrote. This "pre-norm" residual design is why 36-layer models train and run stably: the identity path from embedding to output head is unbroken, and each layer contributes a bounded update on top of it.
+
+For inference this has a practical consequence: the activation working set is tiny. During single-token decode the stream is one vector of 4,096 floats, 16 KB at FP32. Activations are effectively free. The entire cost of decode is streaming the weights past that tiny vector, which is why memory bandwidth, not compute, is the wall we care about in this project.
+
+## RMSNorm: cheap stabilization
+
+Before each attention block and each FFN block, the stream is normalized with RMSNorm:
+
+```
+rms(x) = sqrt( mean(x_i^2) + eps )
+y_i    = (x_i / rms(x)) * g_i
+```
+
+That is it: divide the vector by its root-mean-square magnitude, then scale elementwise by a learned gain vector `g` of length 4,096. Unlike classic LayerNorm there is no mean subtraction and no bias, which removes a reduction pass and a parameter vector. Each RMSNorm holds just 4,096 parameters, and with two per layer plus one final norm the entire model contains 36 x 8,192 + 4,096 = 299,008 norm parameters, a rounding error. Its runtime cost is equally negligible; it exists to keep the numbers flowing through 36 layers well conditioned.
+
+Qwen3 adds one twist: QK-Norm. After projecting queries and keys, each 128-dimensional head vector is itself RMSNorm-ed (one shared 128-element gain for queries, one for keys, per layer). This replaced the QKV bias terms Qwen2 used and stabilizes attention logits. It costs 256 parameters per layer and is worth knowing about because you will see `attn_q_norm` and `attn_k_norm` tensors when you inspect the GGUF file.
+
+## Self-attention: from MHA to GQA
+
+Attention is how a token reads information from earlier positions. Start with classic multi-head attention (MHA), then apply the modification modern models actually ship.
+
+The normalized stream vector x (4,096) is multiplied by three weight matrices:
+
+- Queries: q = x W_Q, reshaped into 32 heads of 128 dims each (32 x 128 = 4,096).
+- Keys: k = x W_K.
+- Values: v = x W_V.
+
+In MHA there would be 32 key heads and 32 value heads to match the 32 query heads. Each head computes, against every cached position t in the context:
+
+```
+score_t = (q . k_t) / sqrt(128)
+weights = softmax(scores)          (causal: only positions <= current)
+out     = sum_t weights_t * v_t
+```
+
+The 32 head outputs (128 dims each) are concatenated back to 4,096 and multiplied by an output matrix W_O, and that result is added to the residual stream. Before scoring, a rotary position embedding (RoPE) is applied to q and k: each pair of dimensions is rotated by an angle proportional to the token's position, which is how the model knows token order without any position parameters. Qwen3 uses a RoPE base of 1,000,000 to support long contexts.
+
+The problem with MHA at inference time is the KV cache. Generation is autoregressive, so keys and values for every past token must be stored and re-read for every new token. With 32 KV heads that cache is enormous. Grouped-query attention (GQA) is the fix: keep all 32 query heads, but share keys and values across groups. Qwen3-8B uses 8 KV heads, so each group of 4 query heads reads the same K and V. Quality stays close to MHA (the GQA paper shows uptrained grouped models nearly match full MHA), while KV cache and W_K/W_V sizes shrink 4x.
+
+Concrete KV cache math for this machine, at FP16 (2 bytes per value):
+
+```
+Per token, per layer: 2 (K and V) x 8 heads x 128 dims x 2 B = 4 KB
+Per token, all 36 layers:                                     144 KB
+
+Context length    GQA, 8 KV heads     Hypothetical MHA, 32 heads
+--------------------------------------------------------------
+4,096 tokens      576 MB              2.25 GB
+8,192 tokens      1.13 GB             4.5 GB
+32,768 tokens     4.5 GB              18 GB
+```
+
+On our 8 GB RTX 5060, GQA is the difference between an 8K context fitting next to the 5 GB model (6.1 GB total) and an MHA-sized cache pushing the total to 9.5 GB, well past what the card holds.
+
+## The feed-forward network: SwiGLU
+
+The second block in each layer is a position-wise feed-forward network. Each token's vector is processed independently, no interaction between positions. Modern models use the SwiGLU variant instead of the original two-matrix ReLU FFN:
+
+```
+gate = x W_gate        (4,096 -> 12,288)
+up   = x W_up          (4,096 -> 12,288)
+h    = SiLU(gate) * up (elementwise;  SiLU(z) = z * sigmoid(z))
+out  = h W_down        (12,288 -> 4,096)
+```
+
+The gating structure (one path is squashed through SiLU and multiplies the other) consistently outperforms plain ReLU FFNs at equal parameter count, which is why nearly every major open model since LLaMA uses it or a close GLU cousin (Gemma, for example, gates with GELU instead of SiLU). Because SwiGLU needs three matrices instead of two, the intermediate size is set to 3x the hidden size (12,288 = 3 x 4,096) rather than the classic 4x, keeping the parameter budget comparable.
+
+Note the proportions: the three FFN matrices hold 151 million parameters per layer versus attention's 42 million. The FFN is 78 percent of each layer. When we later ask "which tensors should live in scarce VRAM," the answer is dominated by FFN weights.
+
+## The output head
+
+After layer 36, the stream passes through a final RMSNorm and then the head: a 4,096 x 151,936 matrix multiply producing one logit per vocabulary token. Softmax turns logits into probabilities, and the sampler (greedy, top-k, top-p, temperature) picks the next token id, which loops back to the embedding table and the whole stack runs again.
+
+Two inference-relevant facts. First, during decode only the last position needs logits, so this is one vector-matrix multiply per token, but it reads the entire 622M-parameter matrix every time, making the head one of the single most bandwidth-hungry tensors in the model. Second, Qwen3-8B does not tie the head to the embedding table (smaller Qwen3 models do), so both 622M matrices exist separately in the file, and together they account for the 1.24B gap between the 8.19B total and the 6.95B non-embedding count Qwen reports.
+
+## Parameter counting: where the 8.2B parameters live
+
+Now derive the full count from the dimensions. Every number below is exact.
+
+```
+Component                  Shape                    Parameters       Share
+--------------------------------------------------------------------------
+Token embedding            151,936 x 4,096          622,329,856       7.6%
+
+Per decoder layer:
+  W_Q                      4,096 x 4,096             16,777,216
+  W_K                      4,096 x 1,024              4,194,304
+  W_V                      4,096 x 1,024              4,194,304
+  W_O                      4,096 x 4,096             16,777,216
+  QK-Norm gains            2 x 128                          256
+  Attention subtotal                                 41,943,296      21.7% of layer
+  W_gate                   4,096 x 12,288            50,331,648
+  W_up                     4,096 x 12,288            50,331,648
+  W_down                   12,288 x 4,096            50,331,648
+  FFN subtotal                                      150,994,944      78.3% of layer
+  2 RMSNorm gains          2 x 4,096                      8,192
+  Layer total                                       192,946,432
+
+All 36 layers              36 x 192,946,432       6,946,071,552      84.8%
+Final RMSNorm              4,096                          4,096
+Output head (untied)       4,096 x 151,936          622,329,856       7.6%
+--------------------------------------------------------------------------
+Total                                             8,190,735,360     100.0%
+```
+
+Sanity checks: the K and V projections are 4,096 x 1,024 because 8 KV heads x 128 dims = 1,024, one quarter of the query width, exactly the GQA saving. The 36-layer subtotal of 6.946B matches Qwen's published "6.95B non-embedding" figure, and the grand total of 8.19B matches the advertised 8.2B. The lesson of the table: 84.8 percent of the model is the repeated layer stack, and inside each layer the FFN dominates 78 to 22 over attention.
+
+At Q4_K_M quantization (roughly 4.9 bits per weight on average, since some tensors stay at higher precision), the file size is about 8.19B x 4.9 / 8 = 5.0 GB, which matches the real Qwen3-8B Q4_K_M GGUF at about 5.03 GB. Per decoder layer that is roughly 118 MB of weights.
+
+## One decoder layer during inference, step by step
+
+Here is exactly what layer i computes when generating token number t during decode. Input: the residual stream vector x, 4,096 floats.
+
+1. **Attention pre-norm.** Compute x_n = RMSNorm(x) using this layer's first gain vector. x itself is kept untouched for the residual add.
+2. **QKV projection.** q = x_n W_Q (4,096 values, viewed as 32 heads x 128), k = x_n W_K and v = x_n W_V (1,024 values each, 8 heads x 128).
+3. **QK-Norm and RoPE.** RMSNorm each q head and k head with the shared 128-dim gains, then rotate q and k by the position-t RoPE angles.
+4. **KV cache append.** Write this token's k and v (4 KB total for this layer at FP16) into the cache at position t.
+5. **Scores.** For each of the 32 query heads, dot the query against all t+1 cached keys (positions 0 through t) of its assigned KV head (4 query heads share each KV head), scale by 1/sqrt(128). This reads the entire K half of the layer's cache.
+6. **Softmax and mix.** Softmax the t+1 scores per head, then take the weighted sum of the t+1 cached value vectors. This reads the V half of the cache. Result: 32 heads x 128 = 4,096 values.
+7. **Output projection and residual add.** Multiply by W_O and add into the stream: x = x + attn_out.
+8. **FFN pre-norm.** x_n = RMSNorm(x) with the second gain vector.
+9. **SwiGLU.** h = SiLU(x_n W_gate) * (x_n W_up), giving 12,288 values, then ffn_out = h W_down.
+10. **Second residual add.** x = x + ffn_out. This x flows to layer i+1.
+
+```mermaid
+flowchart TB
+    X["x in: residual stream (4,096)"] --> N1["RMSNorm 1"]
+    N1 --> ATT["GQA attention<br/>W_Q W_K W_V W_O<br/>QK-Norm, RoPE, KV cache"]
+    X --> ADD1(("+"))
+    ATT --> ADD1
+    ADD1 --> N2["RMSNorm 2"]
+    N2 --> FFN["SwiGLU FFN<br/>gate, up: 4,096 to 12,288<br/>down: 12,288 to 4,096"]
+    ADD1 --> ADD2(("+"))
+    FFN --> ADD2
+    ADD2 --> Y["x out: to next layer (4,096)"]
+```
+
+Notice what steps 2, 7, and 9 have in common: they are all vector-matrix multiplies where a 4 KB to 48 KB activation is multiplied against tens of megabytes of weights. Each weight is read once and used for exactly two floating point operations (one multiply, one add). That ratio, about 2 FLOPs per parameter, is the arithmetic signature of decode and the reason it is memory bound on every device we own.
+
+## What this costs on our machine
+
+Total work per generated token is roughly 2 x 8.19B = 16.4 GFLOPs, trivial for either the i7-14650HX or the RTX 5060. The binding constraint is reading the 5.0 GB of quantized weights, once, every token, plus the KV cache.
+
+```
+Path                         Bandwidth        Ceiling = BW / 5.0 GB
+----------------------------------------------------------------------
+System RAM (DDR5-5600 x2)    89.6 GB/s peak   17.9 tok/s
+  realistic (~65% eff.)      ~58 GB/s         ~11.6 tok/s
+RTX 5060 Laptop GDDR7        448 GB/s         89.6 tok/s
+SSD (if we ever stream)      ~5.5 GB/s        ~1.1 tok/s
+```
+
+The arithmetic: DDR5-5600 dual channel moves 5,600 MT/s x 8 B x 2 channels = 89.6 GB/s. Dividing by the 5.0 GB read per token gives a hard ceiling of 17.9 tokens/s for CPU-only decode, and real sustained bandwidth lands closer to 58 GB/s, so 11 to 12 tokens/s is the honest CPU expectation. One caveat specific to this machine: the mixed 16 GB + 32 GB modules mean only the first 32 GB interleaves across both channels; allocations landing in the last 16 GB run single channel at half bandwidth. The GPU's 448 GB/s would support about 90 tokens/s, and Qwen3-8B at Q4_K_M (5.0 GB) plus a 1.13 GB KV cache for 8K context fits inside 8 GB of VRAM with room for compute buffers. That is exactly why an 8B model is our comfortable baseline and anything bigger forces the offloading techniques this project exists to study.
+
+## References
+
+- Vaswani et al., "Attention Is All You Need", 2017. https://arxiv.org/abs/1706.03762
+- Ainslie et al., "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints", 2023. https://arxiv.org/abs/2305.13245
+- Shazeer, "Fast Transformer Decoding: One Write-Head is All You Need" (MQA), 2019. https://arxiv.org/abs/1911.02150
+- Shazeer, "GLU Variants Improve Transformer", 2020. https://arxiv.org/abs/2002.05202
+- Zhang and Sennrich, "Root Mean Square Layer Normalization", 2019. https://arxiv.org/abs/1910.07467
+- Su et al., "RoFormer: Enhanced Transformer with Rotary Position Embedding", 2021. https://arxiv.org/abs/2104.09864
+- Qwen Team, "Qwen3 Technical Report", 2025. https://arxiv.org/abs/2505.09388
+- Touvron et al., "LLaMA: Open and Efficient Foundation Language Models", 2023. https://arxiv.org/abs/2302.13971
+- Elhage et al., "A Mathematical Framework for Transformer Circuits", 2021. https://transformer-circuits.pub/2021/framework/index.html
+
+## Why this matters for our research
+
+Our goal is running models larger than 8 GB of VRAM on cheap hardware, and every lever we will pull is visible in this architecture. The model is 36 identical, independent layers connected only by a 16 KB residual vector, which is precisely what makes layer-wise CPU/GPU splitting (llama.cpp's `-ngl`) possible: any prefix of layers can live in VRAM and the rest in system RAM, with only a tiny vector crossing the PCIe bus per token. The parameter table tells us where offloading decisions bite: FFN matrices are 78 percent of each layer, so they are the first candidates for VRAM placement or aggressive quantization, while the 622M-parameter output head is read fully every token and punishes slow placement. GQA's 4x KV cache reduction is what lets long contexts coexist with weights in 8 GB at all, and the KV table above becomes our budget sheet when we trade context length against offloaded layers. Most importantly, the bandwidth arithmetic (17.9 tokens/s ceiling on our RAM, 89.6 on our VRAM) gives us a falsifiable performance model: for any hybrid split we try in later phases, we can predict tokens/s from bytes-per-token on each bus before we run a single benchmark, and every optimization we discover must beat that prediction or explain why it cannot.
+# The Inference Pipeline: Tokenization to Sampling
+
+## What you will learn
+
+This document walks the full journey of a prompt through llama.cpp: from raw text, through BPE tokenization and chat templating, into the two distinct execution phases (prefill and decode), and finally out through logits and the sampling chain that picks each generated token. You will learn why the same model on the same hardware processes your prompt at hundreds of tokens per second but generates output at only tens of tokens per second, and you will see the roofline arithmetic that explains it. All concrete numbers are computed for our research machine: an i7-14650HX with 48 GB DDR5-5600 (~89.6 GB/s) and an RTX 5060 Laptop GPU with 8 GB GDDR7 (~448 GB/s), running Qwen3-8B as a ~5 GB Q4_K_M GGUF. By the end you should be able to predict this machine's generation speed ceiling from first principles before ever running a benchmark.
+
+## The pipeline at a glance
+
+Every request to llama.cpp goes through the same stages. Text in, text out, with a loop in the middle that runs once per generated token.
+
+```mermaid
+flowchart TD
+    A["Raw chat messages<br/>(system, user, assistant turns)"] --> B["Chat template<br/>(Jinja, stored in GGUF metadata)"]
+    B --> C["Single formatted string<br/>with special tokens"]
+    C --> D["BPE tokenizer<br/>(vocab: 151,936 entries)"]
+    D --> E["Token IDs<br/>e.g. 1,024 integers"]
+    E --> F["PREFILL phase<br/>all prompt tokens in one batch<br/>compute-bound"]
+    F --> G["KV cache populated<br/>~144 KB per token for Qwen3-8B"]
+    G --> H["DECODE phase<br/>one token per forward pass<br/>memory-bandwidth-bound"]
+    H --> I["Logits<br/>151,936 raw scores (~0.6 MB)"]
+    I --> J["Sampling chain<br/>penalties, top-k, top-p, min-p, temperature"]
+    J --> K["One sampled token ID"]
+    K --> L{"End-of-turn token<br/>or length limit?"}
+    L -- no --> H
+    L -- yes --> M["Detokenize IDs back to text"]
+```
+
+Two things in this diagram deserve your attention before we zoom in. First, the model never sees text. It sees integers on the way in and produces a probability distribution over integers on the way out. Second, the loop from sampling back to decode is the autoregressive loop: each generated token is appended to the sequence and becomes input for the next step. Everything about generation speed follows from what one trip around that loop costs.
+
+## Tokenization: text to integers
+
+A neural network operates on vectors, so text must first become a sequence of integer IDs, each ID indexing a row in the model's embedding table. The dominant algorithm for building that mapping is Byte Pair Encoding (BPE), originally a compression technique, adapted for NLP by Sennrich et al. (2016).
+
+BPE training works bottom-up:
+
+1. Start with a base alphabet. Modern LLMs use byte-level BPE: the 256 possible byte values are the starting symbols, so any input, including emoji, code, and arbitrary Unicode, is representable with zero out-of-vocabulary failures.
+2. Scan a large corpus and count adjacent symbol pairs.
+3. Merge the most frequent pair into a new single symbol and add it to the vocabulary.
+4. Repeat until the vocabulary reaches a target size.
+
+The result is a vocabulary plus an ordered list of merge rules. At inference time the tokenizer replays those merges on your text, greedily, so frequent character sequences collapse into single tokens. Common English words become one token, rare words split into subword pieces, and truly novel strings fall back to raw bytes. A typical BPE segmentation looks like this:
+
+```
+"The tokenizer splits unbelievable words."
+-> ["The", " token", "izer", " splits", " un", "believ", "able", " words", "."]
+```
+
+Note the leading spaces baked into tokens: byte-level BPE treats the space as part of the following token, which is why " token" and "token" are different vocabulary entries with different IDs.
+
+Concrete numbers for our reference model. Qwen3-8B uses a byte-level BPE vocabulary of 151,936 entries. Its embedding table is therefore 151,936 rows by 4,096 columns, about 622 million parameters, roughly 7.6 percent of the model's 8.2B total. English prose averages roughly 3.5 to 4 characters per token with this class of tokenizer, so a 4,000 character prompt becomes roughly 1,000 to 1,150 tokens. That number matters because prefill cost scales with token count, not character count.
+
+The tokenizer definition (vocabulary, merges, special tokens) ships inside the GGUF file itself, so llama.cpp needs no external tokenizer files. This is also a common failure point in the GGUF ecosystem: a model converted with a subtly wrong tokenizer configuration produces degraded output that looks like a model problem but is really a preprocessing problem.
+
+## Chat templates: formatting the conversation
+
+An instruction-tuned model was trained on conversations serialized in one exact textual format. The chat template is the function that turns a structured list of messages into that format. Qwen3 uses the ChatML convention:
+
+```
+<|im_start|>system
+You are a helpful assistant.<|im_end|>
+<|im_start|>user
+Explain BPE briefly.<|im_end|>
+<|im_start|>assistant
+```
+
+Markers like `<|im_start|>` and `<|im_end|>` are special tokens: single reserved IDs in the vocabulary, injected directly by the tokenizer rather than being re-tokenized as plain text. The template itself is a Jinja string stored in the GGUF metadata under `tokenizer.chat_template`, and `llama-server` and `llama-cli` apply it automatically in chat modes.
+
+Why this deserves a whole section: template mismatch is the single most common cause of a locally hosted model behaving far worse than its published benchmarks. If the template is wrong, or special tokens get split into ordinary byte tokens, the model is effectively being shown a document format it never saw in training. Symptoms include ignoring the system prompt, failing to stop (because the model never emits the end-of-turn token the runtime is watching for), and leaking markers like `im_start` into output. Qwen3 adds one more wrinkle: its template also manages `<think>` blocks for the model's optional reasoning mode, so the template controls not just formatting but behavior.
+
+## Prefill: processing the prompt
+
+Once the prompt is a list of token IDs, inference proper begins, and it happens in two phases with very different performance characters.
+
+Prefill (llama.cpp calls it prompt processing, `pp` in benchmark output) runs the entire prompt through the model to populate the KV cache, the per-layer store of attention keys and values that lets future tokens attend to the prompt without recomputing it. The critical property of prefill: all prompt tokens are processed together in large batches. Each transformer layer's weight matrices are loaded from memory once per batch and multiplied against hundreds of token activations. That is a matrix-matrix multiplication, the workload GPUs were built for.
+
+For Qwen3-8B (36 layers, GQA with 8 KV heads of dimension 128), the KV cache costs per token:
+
+```
+2 (K and V) x 8 KV heads x 128 dims x 2 bytes (F16) = 4,096 bytes per layer
+x 36 layers = 147,456 bytes, roughly 144 KB per token
+```
+
+A 1,024 token prompt therefore leaves behind a ~144 MB KV cache, and a full 8,192 token context costs about 1.2 GB (1,207,959,552 bytes). Add that to the ~5.0 GB of Q4_K_M weights and roughly half a GB of compute buffers and Qwen3-8B at 8K context just fits in our 8 GB of VRAM. That is not a coincidence; it is why this model is our reference point.
+
+## Decode: the autoregressive loop
+
+After prefill, generation begins. The model produces exactly one token per forward pass:
+
+1. Take the embedding of the single most recent token.
+2. Run it through all 36 layers. In each attention block, the new token's query attends over all cached keys and values, which is what gives the model access to the whole context without reprocessing it.
+3. Project the final hidden state through the output matrix to get logits.
+4. Sample one token from the logits (next section).
+5. Feed the sampled token back to step 1. Its own K and V are computed and appended to the cache during that next forward pass, since they do not exist until the token has been run through the layers.
+
+The loop exits when the model emits the end-of-turn special token or hits a token limit. This is the autoregressive loop, and its defining performance property is batch size one. Every weight matrix in the model must still be read from memory in full, but now it is multiplied against a single token's activation vector: a matrix-vector product. The arithmetic per byte of weights loaded collapses, and that changes which hardware resource is the bottleneck.
+
+```
++----------------------+---------------------------+---------------------------+
+|                      | PREFILL                   | DECODE                    |
++----------------------+---------------------------+---------------------------+
+| Tokens per pass      | hundreds (batched)        | 1                         |
+| Core operation       | matrix-matrix multiply    | matrix-vector multiply    |
+| Weight reads         | once per batch            | once per single token     |
+| Bottleneck           | compute (FLOPS)           | memory bandwidth (GB/s)   |
+| Scales with          | GPU/CPU compute power     | RAM/VRAM bandwidth        |
+| llama.cpp metric     | pp (prompt processing)    | tg (token generation)     |
+| Felt by user as      | delay before first token  | streaming speed           |
++----------------------+---------------------------+---------------------------+
+```
+
+## Why prefill is compute-bound and decode is bandwidth-bound
+
+The roofline model (Williams et al., 2009) makes this precise with one number: arithmetic intensity, the FLOPs a workload performs per byte it moves from memory. Every processor has a ridge point, its peak FLOPS divided by its memory bandwidth. Workloads below the ridge point are limited by bandwidth no matter how fast the ALUs are; workloads above it are limited by compute.
+
+Ridge points for our machine, using rough peak figures:
+
+```
+RTX 5060 Laptop: ~16 TFLOPS FP32 / 448 GB/s  = ~36 FLOPs per byte
+                 (several times higher when tensor cores are used)
+i7-14650HX:      ~2 TFLOPS FP32 (AVX2, all cores) / 89.6 GB/s = ~22 FLOPs per byte
+```
+
+Now the workload side. A decent approximation for a transformer forward pass is 2 FLOPs per parameter per token (one multiply and one add per weight). For Qwen3-8B:
+
+```
+FLOPs per decoded token = 2 x 8.2e9 params      = 16.4 GFLOPs
+Bytes moved per token   = all Q4_K_M weights    = ~5.0 GB
+Arithmetic intensity    = 16.4e9 / 5.0e9        = ~3.3 FLOPs per byte
+```
+
+3.3 is far below both ridge points (36 on the GPU, 22 on the CPU). Decode is therefore memory-bandwidth-bound on every processor we own, and the compute units sit mostly idle waiting for weights to arrive. This is the single most important fact in local LLM inference.
+
+Prefill changes the ratio, not the totals. With a batch of N tokens, each weight byte is loaded once but participates in N matrix-vector products, so arithmetic intensity is roughly 3.3 x N. A batch of 512 prompt tokens gives about 1,700 FLOPs per byte, some 50 times past the GPU's ridge point. Prefill is therefore solidly compute-bound, and it is where tensor cores, INT8 dot products, and batching optimizations pay off.
+
+Because decode is bandwidth-bound, its speed ceiling is just bandwidth divided by bytes touched per token:
+
+```
++---------------------------------+------------+-----------+----------------+
+| Configuration                   | Bandwidth  | GB/token  | Ceiling tok/s  |
++---------------------------------+------------+-----------+----------------+
+| GPU, all layers in VRAM         | 448 GB/s   | 5.0       | ~90            |
+| GPU, VRAM, +8K ctx KV reads     | 448 GB/s   | 6.2       | ~72            |
+| CPU only, DDR5-5600 theoretical | 89.6 GB/s  | 5.0       | ~18            |
+| CPU only, ~65% realized b/w     | ~58 GB/s   | 5.0       | ~12            |
++---------------------------------+------------+-----------+----------------+
+```
+
+The 6.2 GB/token row shows a second-order effect worth remembering: attention must also read the KV cache every step, and at 8K context that adds about 1.2 GB per token, cutting the ceiling by roughly 20 percent. Long contexts slow decode down even when everything fits in VRAM. The CPU rows carry an extra caveat for our specific machine: our mixed 16 GB + 32 GB modules interleave dual-channel across only the first 32 GB, so data landing in the upper region runs at single-channel speed. Real-world numbers land at 70 to 85 percent of these ceilings; expect roughly 60 to 70 tok/s fully on GPU and 10 to 13 tok/s on CPU, which we will verify by measurement in later experiments.
+
+Prefill speed comes from the compute side instead. At an assumed sustained 8 TFLOPS of effective GPU throughput on quantized matmuls:
+
+```
+Prefill tok/s = 8e12 FLOPS / 16.4e9 FLOPs per token = ~490 tok/s
+```
+
+With tensor cores llama.cpp typically sustains well above that on Blackwell hardware; anywhere from 500 to 1,500+ tok/s is plausible and is exactly the kind of figure our benchmarking phase will pin down. Either way, the ratio is the story: prefill runs one to two orders of magnitude faster than decode on the same silicon, because it is a different kind of workload.
+
+## Logits and the sampling chain
+
+Each decode step ends with the final hidden state (4,096 floats for Qwen3-8B) multiplied by the output projection, a 4,096 x 151,936 matrix. The result is the logits: one raw, unnormalized score per vocabulary entry, about 0.6 MB of FP32 per step. Higher logit means the model considers that token a better continuation. The softmax function converts logits to a probability distribution:
+
+```
+p_i = exp(z_i / T) / sum_j exp(z_j / T)
+```
+
+where T is temperature. The sampler's job is to pick one token from this distribution, and how it picks shapes the entire character of the output.
+
+Greedy vs stochastic. Greedy decoding always takes the argmax token. It is deterministic and sounds safe, but locally optimal choices compound into repetitive, degenerate text, a failure mode documented by Holtzman et al. (2020). Qwen's own model card explicitly warns against greedy decoding for Qwen3's reasoning mode. Stochastic sampling draws randomly from the (filtered, reshaped) distribution, trading determinism for diversity and robustness. The methods below are all ways of taming that randomness:
+
+- Temperature (T) rescales logits before softmax. T below 1.0 sharpens the distribution toward the top candidates; T above 1.0 flattens it; T approaching 0 converges to greedy. It reshapes probabilities but never removes candidates.
+- Top-k (Fan et al., 2018) keeps only the k highest-probability tokens and renormalizes. Simple and cheap, but a fixed k is blind to context: when the model is certain, k=40 admits 39 bad options; when it is genuinely uncertain, k=40 may cut off good ones.
+- Top-p, nucleus sampling (Holtzman et al., 2020), keeps the smallest set of tokens whose cumulative probability reaches p (say 0.95), adapting the candidate count to the model's confidence at each step.
+- Min-p (Nguyen et al., 2024) keeps every token whose probability is at least min_p times the top token's probability. With min_p = 0.05, a 60 percent-confident top token sets the bar at 3 percent, while a flat distribution keeps many candidates. It handles high temperatures more gracefully than top-p and has become a popular llama.cpp default among local users.
+- Repetition penalties fight loops. The classic repeat penalty (Keskar et al., 2019) scales the logits of recently seen tokens by a factor like 1.1, dividing positive logits and multiplying negative ones so the token always becomes less likely; presence and frequency penalties subtract flat or count-scaled amounts instead. Use gently: strong penalties visibly damage code and structured output, where repeating tokens is correct.
+
+llama.cpp applies these as a configurable chain, by default in the order penalties, then top-k, then top-p, then min-p, then temperature, then the final random draw. Its stock defaults are temp 0.8, top-k 40, top-p 0.95, min-p 0.05. For Qwen3 in thinking mode the model card recommends temp 0.6, top-p 0.95, top-k 20. One more first-principles note: sampling cost is negligible. Sorting and filtering a 151,936-entry array takes microseconds against the tens of milliseconds a bandwidth-bound forward pass costs, so tuning samplers is free in throughput terms.
+
+```mermaid
+flowchart LR
+    A["Logits<br/>151,936 scores"] --> B["Repetition<br/>penalties"]
+    B --> C["Top-k<br/>keep best 40"]
+    C --> D["Top-p<br/>cumulative 0.95"]
+    D --> E["Min-p<br/>>= 5% of max"]
+    E --> F["Temperature<br/>T = 0.8"]
+    F --> G["Softmax +<br/>random draw"]
+    G --> H["Next token ID"]
+```
+
+## References
+
+- Sennrich, Haddow, Birch (2016). Neural Machine Translation of Rare Words with Subword Units (BPE). https://arxiv.org/abs/1508.07909
+- Vaswani et al. (2017). Attention Is All You Need. https://arxiv.org/abs/1706.03762
+- Williams, Waterman, Patterson (2009). Roofline: An Insightful Visual Performance Model for Multicore Architectures. CACM 52(4).
+- Pope et al. (2022). Efficiently Scaling Transformer Inference. https://arxiv.org/abs/2211.05102
+- Ainslie et al. (2023). GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints. https://arxiv.org/abs/2305.13245
+- Fan, Lewis, Dauphin (2018). Hierarchical Neural Story Generation (top-k sampling). https://arxiv.org/abs/1805.04833
+- Holtzman et al. (2020). The Curious Case of Neural Text Degeneration (nucleus sampling). https://arxiv.org/abs/1904.09751
+- Nguyen et al. (2024). Min P Sampling: Balancing Creativity and Coherence at High Temperature. https://arxiv.org/abs/2407.01082
+- Keskar et al. (2019). CTRL: A Conditional Transformer Language Model for Controllable Generation (repetition penalty). https://arxiv.org/abs/1909.05858
+- Qwen Team (2025). Qwen3 Technical Report. https://arxiv.org/abs/2505.09388
+
+## Why this matters for our research
+
+Our goal is running models larger than 8 GB of VRAM on cheap hardware, and this pipeline analysis tells us exactly where that fight will be won or lost. Decode is bandwidth-bound at roughly 3.3 FLOPs per byte, so generation speed for any model we run is approximately bandwidth divided by the bytes we must touch per token: our RTX 5060 Laptop's 448 GB/s gives a ~90 tok/s ceiling on a 5 GB model, while system RAM's 89.6 GB/s gives at best ~18. Every technique on our research roadmap is really an attack on one side of that fraction: quantization shrinks bytes per token, partial GPU offload puts the hottest bytes on the fastest bus, KV cache quantization trims the per-token attention reads that erode long-context speed, and MoE models with few active parameters cut bytes per token by an order of magnitude without shrinking total capacity. Meanwhile prefill, being compute-bound, will stay fast even for layers we push to the CPU or stream from the SSD, which is why hybrid setups feel snappy on the prompt and slow in generation. When we start benchmarking larger-than-VRAM models, the ceilings computed here are our honesty check: if a configuration lands far below its bandwidth-derived ceiling we have an implementation problem, and if a claimed optimization lands above it we have a measurement problem.
+# The Memory Hierarchy: Why Bandwidth Rules Inference
+
+**What you will learn.** This is the central systems document of Phase 1. You will learn why token generation speed in llama.cpp is almost never limited by how fast your CPU or GPU can do math, and almost always limited by how fast bytes can move through the memory hierarchy. We will map every tier of that hierarchy on our actual research machine, derive a simple upper bound formula for decode speed, and compute concrete tokens-per-second ceilings for Qwen3-8B Q4_K_M running on CPU, on GPU, and split between them. By the end you will be able to predict, with one line of arithmetic, whether any model on any hardware will be fast, slow, or unusable.
+
+## The hierarchy on this machine
+
+Every byte of model weights lives somewhere in a pyramid of memories. Each tier is bigger, cheaper, and dramatically slower than the one above it. Here is the pyramid on our i7-14650HX / RTX 5060 Laptop machine, with the arithmetic behind each number.
+
+**GPU VRAM (GDDR7): ~384 GB/s theoretical, ~300 GB/s effective.**
+The RTX 5060 Laptop has a 128-bit memory bus running GDDR7 at 24 Gbps per pin:
+
+```
+128 bits / 8 = 16 bytes per transfer
+16 bytes x 24 GT/s = 384 GB/s theoretical
+```
+
+Real sustained bandwidth on large sequential reads (which is exactly what inference does) typically lands at 75 to 85 percent of theoretical, so we will use ~300 GB/s as the effective number.
+
+**System RAM (DDR5-5600 dual channel): 89.6 GB/s theoretical, ~60-70 GB/s effective.**
+
+```
+5600 MT/s x 8 bytes per channel x 2 channels = 89.6 GB/s theoretical
+```
+
+Real-world efficiency for streaming reads on a client Intel memory controller is usually 65 to 80 percent, so ~60-70 GB/s effective. We will use 65 GB/s in the math below.
+
+One caveat specific to this machine: the 48 GB is a mixed 16 GB + 32 GB pair. Intel Flex Mode interleaves the first 32 GB (16 from each stick) as true dual channel, but the last 16 GB on the larger stick runs single channel at roughly 44.8 GB/s theoretical. Where Windows places the model in physical memory therefore affects real throughput. This is worth measuring in a later experiment.
+
+**PCIe 4.0 link between them: 32 GB/s theoretical (x16), ~16-25 GB/s effective.**
+PCIe 4.0 gives roughly 2 GB/s per lane per direction, so x16 is ~32 GB/s and x8 (a common laptop dGPU wiring) is ~16 GB/s. After protocol overhead and real transfer patterns, sustained host-to-device copies land in the 16 to 25 GB/s range on x16, and roughly half that on x8. One wrinkle worth measuring on this machine: the RTX 5060 Laptop is a PCIe 5.0 x8 device, so if the platform actually runs the link at Gen5, the x8 wiring delivers Gen4 x16 numbers (nvidia-smi -q reports the negotiated generation and width). Either way, this link is the bottleneck for any scheme that streams weights to the GPU at generation time.
+
+**NVMe SSD (WD SN5000S, PCIe 4.0): ~5-6 GB/s sequential, far less random.**
+Sequential reads sustain about 5 to 6 GB/s. But if data is faulted in through the page cache in 4 KB pages (which is what mmap does when memory runs out), effective throughput can drop by an order of magnitude or more.
+
+```
+Tier                    Theoretical      Effective        Capacity
+----------------------  ---------------  ---------------  ---------
+GPU VRAM (GDDR7)        384 GB/s         ~300 GB/s        8 GB
+System RAM (DDR5-5600)  89.6 GB/s        ~65 GB/s         48 GB
+PCIe 4.0 link           16-32 GB/s       ~16-25 GB/s      (transit)
+NVMe SSD (SN5000S)      ~6 GB/s          ~5-5.5 GB/s      1 TB
+```
+
+Notice the shape: each step down is roughly a 4-12x bandwidth cliff. That shape dictates everything that follows.
+
+```mermaid
+graph TD
+    A["GPU VRAM: 8 GB<br/>~300 GB/s effective"] -->|"PCIe 4.0: ~16-25 GB/s"| B["System RAM: 48 GB<br/>~65 GB/s effective"]
+    B -->|"NVMe: ~5-5.5 GB/s"| C["SSD: 1 TB<br/>page-fault reads far slower"]
+    style A fill:#2d6a4f,color:#fff
+    style B fill:#40916c,color:#fff
+    style C fill:#95d5b2,color:#000
+```
+
+## Why decode is a bandwidth problem, not a compute problem
+
+Generating one token with a decoder-only transformer means running the token's hidden state through every layer. At batch size 1, every large operation is a matrix-vector multiply: a vector of activations times a huge weight matrix. Each weight is loaded from memory, used for exactly one multiply-add, and discarded. There is no reuse.
+
+The standard way to quantify this is arithmetic intensity: FLOPs performed per byte moved. For Qwen3-8B at Q4_K_M:
+
+```
+FLOPs per token   ~= 2 x 8.2B params        = 16.4 GFLOPs
+Bytes per token   ~= 5.0 GB of weights read once
+Arithmetic intensity = 16.4e9 / 5.0e9       ~= 3.3 FLOPs/byte
+```
+
+Now compare that to what each processor needs to stay busy (the roofline balance point):
+
+```
+RTX 5060 Laptop:  ~20 TFLOPS / 300 GB/s  ~= 67 FLOPs/byte needed
+i7-14650HX:       ~1.5 TFLOPS / 65 GB/s  ~= 23 FLOPs/byte needed
+```
+
+Decode delivers 3.3 FLOPs per byte. The GPU wants 67 to be compute-limited. We are memory-bound by a factor of roughly 20 on the GPU and roughly 7 on the CPU. At 60 tokens/sec the GPU performs about 1 TFLOP/s of useful work, around 5 percent of its compute capability. The other 95 percent of the silicon idles, waiting for GDDR7.
+
+Prefill is the opposite case. When llama.cpp processes your 1024-token prompt, it pushes token positions through each weight matrix in batches, 512 at a time with the default ubatch size. Each weight loaded from memory is reused 512 times, arithmetic intensity multiplies by the batch size, far past both balance points above, and the workload becomes compute-bound. This is why prompt processing runs at hundreds or thousands of tokens per second while generation crawls along at tens.
+
+## The decode speed upper bound
+
+The whole analysis compresses into one inequality:
+
+```
+tokens/sec  <=  effective bandwidth  /  bytes touched per token
+```
+
+Bytes touched per token has two parts:
+
+1. **Weights.** Every parameter is read once per token, with one exception: the input embedding table is a lookup, so only one row of it is read (Qwen3-8B does not tie embeddings, and its separate output head is still read in full to produce logits). For Qwen3-8B Q4_K_M the file is ~5.0 GB (8.2B params at an average of ~4.9 bits each, including the K-quant scale factors); the embedding table is ~0.35 GB of that, so ~4.7 GB is actually read per token. We round to 5.0 GB throughout to keep the arithmetic simple, which makes every ceiling below slightly conservative.
+2. **KV cache.** Attention reads every cached key and value for every prior token. Qwen3-8B uses GQA with 8 KV heads of dimension 128 across 36 layers, stored as FP16:
+
+```
+KV bytes per cached token = 2 (K and V) x 36 layers x 8 heads x 128 dim x 2 bytes
+                          = 147,456 bytes ~= 144 KB
+At 4096 context: 4096 x 144 KB ~= 0.60 GB read per new token
+```
+
+So early in a generation the model touches ~5.0 GB per token; by token 4096 it touches ~5.6 GB. Decode gets slower as context grows, and the formula predicts by exactly how much.
+
+## The ceiling on CPU, on GPU, and split
+
+Now plug in the numbers for our machine and the 5.0 GB Q4_K_M model.
+
+**CPU only (weights in DDR5):**
+
+```
+65 GB/s / 5.0 GB  = 13.0 tokens/sec ceiling (short context)
+65 / 5.6          = 11.6 tokens/sec at 4096 context
+```
+
+Real llama.cpp throughput typically reaches 60 to 85 percent of this bound, so expect roughly 8 to 11 tokens/sec in practice. We will validate this experimentally in Phase 2.
+
+**GPU only (weights in VRAM, fits in 8 GB with room for KV cache):**
+
+```
+300 GB/s / 5.0 GB = 60 tokens/sec ceiling
+300 / 5.6         = 53.6 tokens/sec at 4096 context
+```
+
+Expect roughly 45 to 55 tokens/sec measured. Note that the 4.6x speedup over CPU is exactly the bandwidth ratio (300/65), not anything to do with CUDA cores.
+
+**Split across both (the case this project actually cares about):**
+When llama.cpp offloads some layers to the GPU and leaves the rest on CPU, each token must pass through both parts in sequence. Times add:
+
+```
+time per token = bytes_on_gpu / 300  +  bytes_on_cpu / 65
+```
+
+With 70 percent of layers on GPU (3.5 GB) and 30 percent on CPU (1.5 GB):
+
+```
+t = 3.5/300 + 1.5/65 = 0.0117 + 0.0231 = 0.0347 s   ->  28.8 tokens/sec
+```
+
+With 90 percent on GPU (4.5 GB) and 10 percent on CPU (0.5 GB):
+
+```
+t = 4.5/300 + 0.5/65 = 0.0150 + 0.0077 = 0.0227 s   ->  44.1 tokens/sec
+```
+
+```
+Placement                       Ceiling (tokens/sec)
+------------------------------  --------------------
+100% GPU (5.0 GB in VRAM)       60.0
+90% GPU / 10% CPU               44.1
+70% GPU / 30% CPU               28.8
+100% CPU (DDR5)                 13.0
+100% SSD (hypothetical)          1.1
+```
+
+Two lessons hide in this table. First, the relationship is harmonic, not linear: the slow tier dominates. Leaving just 30 percent of the model on CPU costs you more than half the GPU-only speed. Second, every gigabyte promoted from RAM to VRAM saves a fixed 1/65 - 1/300 = 12.1 milliseconds per token, which is why the last few offloaded layers matter as much as the first few.
+
+**Why not stream the leftover weights over PCIe instead?** Suppose we kept all compute on the GPU and copied the CPU-resident 1.5 GB across PCIe each token at 20 GB/s: that alone takes 75 ms per token, three times worse than just computing those layers on the CPU (23 ms). Zoom in further: one layer of this model is 5.0/36 ~= 139 MB. The GPU computes a layer in about 0.46 ms, but fetching that layer over PCIe takes about 7 ms. Naive streaming is 15x too slow to hide behind compute. This single ratio is why llama.cpp runs unoffloaded layers on the CPU, and it defines the gap our research has to close.
+
+## When the model spills to SSD, speed collapses
+
+The formula is merciless about the bottom tier. A model read entirely from NVMe at 5.5 GB/s:
+
+```
+5.5 GB/s / 5.0 GB = 1.1 tokens/sec
+```
+
+That is the optimistic sequential-read bound. Reality is worse. llama.cpp memory-maps the GGUF file, so when weights exceed available RAM the OS page cache silently evicts pages, and every token re-faults them in 4 KB pages with queue depth near 1. Random 4 KB reads on the SN5000S sustain well under 1 GB/s, so real throughput can fall to a token every several seconds.
+
+A concrete bigger-model example: a 70B model at Q4_K_M is ~42 GB. With Windows and the runtime consuming several GB, perhaps 38 GB of RAM is available for weights, so ~4 GB spills every token:
+
+```
+t = 38/65 + 4/5.5 = 0.585 + 0.727 = 1.31 s  ->  0.76 tokens/sec (best case)
+```
+
+Less than one token per second even under generous assumptions. The cliff between "fits in RAM" and "does not fit in RAM" is the sharpest edge in the entire hierarchy, and the reason the practical model ceiling on this machine is set by RAM size, not disk size.
+
+## The napkin math behind every research question
+
+Every research direction in this project is an attack on one term of `tokens/sec <= bandwidth / bytes`. One line of arithmetic motivates each:
+
+- **Compression (attack the bytes).** Qwen3-8B at FP16 is 16.4 GB; at Q4_K_M it is 5.0 GB. On CPU that is the difference between a 4.0 tokens/sec ceiling and a 13.0 tokens/sec ceiling, a 3.3x speedup from quantization alone before any hardware changes. Every further bit shaved per weight is a direct multiplier on decode speed, bounded only by quality loss.
+
+- **Hybrid execution (attack the placement).** The split formula shows each GB moved from DDR5 to VRAM buys 12.1 ms per token. Optimal layer placement across an 8 GB VRAM budget is a knapsack problem whose payoff we can now compute exactly, including which tensors (attention vs FFN vs KV cache) earn their VRAM residency.
+
+- **Caching (attack "touched").** The bound charges for bytes touched, not bytes stored. If only a fraction of weights is needed per token (MoE experts, activation sparsity as exploited by PowerInfer), effective bytes drop proportionally. A model where each token touches 20 percent of weights behaves like a model one fifth its size: that is how a 30B-class model could hit interactive speeds on this machine.
+
+- **Prefetching (attack the stall).** SSD and PCIe bandwidth are only catastrophic when the pipeline waits on them. If the next token's needed weights are predictable, transfers can overlap compute, as in Apple's LLM-in-a-flash work. Our napkin math says raw streaming is 15x too slow, so prefetching only wins in combination with caching and compression that shrink what must move. Quantifying that combination is precisely the research program.
+
+## Why this matters for our research
+
+Our stated goal is running models larger than 8 GB of VRAM, and eventually larger than 48 GB of RAM, at usable speeds on cheap consumer hardware. This document establishes the ruler we will measure every idea against. The hierarchy on this machine spans 300 GB/s down to 5 GB/s, a 60x spread, and the single inequality `tokens/sec <= effective bandwidth / bytes touched per token` converts any proposed configuration into a predicted speed before we run a single benchmark. It tells us the RTX 5060's compute is nearly irrelevant for decode, that layer placement follows harmonic math where the slow tier dominates, that PCIe streaming is 15x short of viability in naive form, and that an SSD spill is a cliff, not a slope. Every technique we study in later phases, quantization, KV cache compression, speculative decoding, sparsity-aware offloading, prefetching, either reduces bytes touched, moves bytes to a faster tier, or hides transfer latency. When an experiment beats or misses these ceilings, the gap itself is the finding.
+
+## References
+
+- Williams, S., Waterman, A., Patterson, D. "Roofline: An Insightful Visual Performance Model for Multicore Architectures." CACM 2009. https://doi.org/10.1145/1498765.1498785
+- Gholami, A. et al. "AI and Memory Wall." arXiv:2403.14123. https://arxiv.org/abs/2403.14123
+- Alizadeh, K. et al. "LLM in a flash: Efficient Large Language Model Inference with Limited Memory." arXiv:2312.11514. https://arxiv.org/abs/2312.11514
+- Sheng, Y. et al. "FlexGen: High-Throughput Generative Inference of Large Language Models with a Single GPU." arXiv:2303.06865. https://arxiv.org/abs/2303.06865
+- Song, Y. et al. "PowerInfer: Fast Large Language Model Serving with a Consumer-grade GPU." arXiv:2312.12456. https://arxiv.org/abs/2312.12456
+- Frantar, E. et al. "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers." arXiv:2210.17323. https://arxiv.org/abs/2210.17323
+- Ainslie, J. et al. "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints." arXiv:2305.13245. https://arxiv.org/abs/2305.13245

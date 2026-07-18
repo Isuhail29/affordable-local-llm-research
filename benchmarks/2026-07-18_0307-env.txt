@@ -1,0 +1,4 @@
+version: 10064 (86d86ed43)
+built with Clang 20.1.8 for Windows x86_64
+name, memory.total [MiB], memory.used [MiB], driver_version
+NVIDIA GeForce RTX 5060 Laptop GPU, 8151 MiB, 1503 MiB, 591.91

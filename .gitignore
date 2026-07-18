@@ -1,0 +1,10 @@
+# Large binaries: not in the repo. See "Reproducing this setup" in README.md
+models/
+llama.cpp/
+archive/
+*.gguf
+*.zip
+
+# Local build outputs (source-build track)
+build/
+llama.cpp-src/

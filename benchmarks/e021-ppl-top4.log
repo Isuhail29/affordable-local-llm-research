@@ -1,0 +1,11 @@
+0.01.234.815 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.265.191 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.03.896.084 I 
+0.03.896.139 I system_info: n_threads = 12 (n_threads_batch = 12) / 24 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | BLACKWELL_NATIVE_FP4 = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.03.896.150 I perplexity: tokenizing the input ..
+0.03.918.998 I perplexity: tokenization took 22.842 ms
+0.03.919.110 I perplexity: calculating perplexity over 28 chunks, n_ctx=512, batch_size=2048, n_seq=4
+0.10.454.851 I perplexity: 6.54 seconds per pass - ETA 0.75 minutes
+[1]4.3488,[2]6.5543,[3]6.7762,[4]6.6699,[5]7.4945,[6]5.9699,[7]6.4925,[8]6.4134,[9]6.6122,[10]7.2737,[11]7.2555,[12]7.2652,[13]7.3698,[14]7.3235,[15]7.3857,[16]7.3027,[17]7.4400,[18]7.7523,[19]7.3228,[20]7.6609,[21]7.6922,[22]7.4979,[23]7.6699,[24]7.7472,[25]7.5707,[26]7.7881,[27]8.1802,[28]7.7971,
+0.37.453.553 I Final estimate: PPL = 7.7971 +/- 0.25674
+
