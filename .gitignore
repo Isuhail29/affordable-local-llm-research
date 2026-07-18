@@ -8,3 +8,4 @@ archive/
 # Local build outputs (source-build track)
 build/
 llama.cpp-src/
+llama.cpp-master/
