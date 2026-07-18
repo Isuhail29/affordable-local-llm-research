@@ -35,20 +35,34 @@ If the straggler theory is right: patched ncmoe 48 around 30-34 t/s at t12-16, a
 
 ## Actual Result
 
-(pending build)
+Same-toolchain A/B (MSVC 19.44, Ninja, AVX2 native build; 30B pure CPU -ngl 0, tg128, warm cache, r=3):
 
-## Benchmark
+| Threads | Stock | Patched |
+|---|---|---|
+| 12 | 17.10 ± 1.29 | 16.32 ± 3.50 |
+| 16 | 17.84 ± 0.63 | 18.74 ± 0.34 |
+| 20 | 15.32 ± 0.51 | 15.00 ± 0.70 |
 
-(pending)
+## Benchmark analysis
+
+**Hypothesis 1 falsified by its own pre-registered threshold.** The patch gains at most +5% (t16) and nothing at other thread counts. Restoring work-stealing does not recover the expert-path bandwidth gap; node-barrier stragglers were not the bottleneck. H2 weakly supported (patched optimum moved to 16 threads, tighter variance) but the effect is marginal. H3/H4 moot.
+
+**The control arm produced the real finding.** Our stock rebuild (17.1 t/s at t12) is ~10% slower than the official b10064 binary on the identical code path (19.0), differing only in compiler (MSVC vs Clang). A purely DRAM-bandwidth-bound workload is compiler-insensitive; a 10% compiler effect means the expert path is COMPUTE-bound in its kernels, not memory-bound. The "34 GB/s extraction" is therefore not a memory-system limit at all: it is dequant/vec_dot ALU throughput at matvec granularity.
+
+**Source re-inspection under that lens found the likely mechanism:** the dense mul_mat path can route through llamafile_sgemm (optimized tiled kernels); ggml_compute_forward_mul_mat_id has no sgemm path and always walks the plain vec_dot loop. Dense weights get the fast engine, experts get the naive loop. This coherently explains E021's dense-vs-expert efficiency split (47.5 vs ~30 GB/s equivalent) without invoking memory behavior at all.
 
 ## Lessons Learned
 
-(pending)
+1. Same-toolchain A/B was essential: comparing our patched MSVC build against the official Clang binary would have misread the patch as -14%.
+2. A falsified pre-registered hypothesis with a clean control is real progress: two candidate mechanisms (scatter physics in E021, barrier stragglers here) are now eliminated, and the compiler-sensitivity observation localizes the cost to kernel compute.
+3. Keep negative-result patches in the repo (patches/e025-mmid-chunk16.patch): they document the eliminated branch and the +5%/t16 residual is harmless to keep in our private build.
 
 ## Possible Improvements
 
-(pending)
+- Confirm compute-boundedness directly: perf-counter or IPC sampling during expert decode, or a vec_dot microbenchmark at 768x2048 matvec shape vs long-row dense shape.
+- Build with clang-cl to erase the compiler deficit and re-baseline.
 
 ## Next Steps
 
-(pending)
+- E026 candidate (the promising one): give mul_mat_id an sgemm/tiled path per active expert, or batch the 8 active experts' matvecs to reach sgemm-friendly shapes. Larger change; requires careful design against ggml conventions.
+- Complete the CUDA build of the current tree once the CUDA toolkit is installed, so server-config (ncmoe) A/Bs become possible.
