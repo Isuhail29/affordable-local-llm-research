@@ -19,6 +19,14 @@ models:
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.Q4_K_M.gguf"
       -ngl 99 --n-cpu-moe 40 -fa on -c 16384 --mlock -t 12 -np 1 --jinja --port ${PORT}
 
+  "qwen-vision":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
+      --mmproj "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-VL-30B-A3B-mmproj-F16.gguf"
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+
   "qwen-30b":
     ttl: 900
     cmd: >
