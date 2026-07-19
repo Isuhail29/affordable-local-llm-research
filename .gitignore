@@ -10,3 +10,5 @@ build/
 llama.cpp-src/
 llama.cpp-master/
 .webui_secret_key
+sd-cpp-src/
+*.safetensors
