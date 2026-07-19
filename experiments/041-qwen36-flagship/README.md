@@ -36,6 +36,16 @@ Real-server battery: 37.3-40.5 t/s across five prompts. **+32% over the champion
 
 Three battery attempts (default, /no_think, --reasoning-budget 0) all had the server route ALL output into reasoning_content: b10064 (2026-07-17) predates this model's template conventions. Visible reasoning content is high quality: the dock-scheduling math is exactly on the correct track (210 by 11:00, 1680/77 = 21.82 h) and the logic grid is solved with clean contradiction-checking, but answers truncate at token caps mid-deliberation. Per protocol, no crown without a clean quality pass.
 
+### Quality resolution (b10068, free deliberation, 2500-token budget)
+
+The "parser bug" was a misdiagnosis chain worth recording: identical output across builds proved the model is REASONING-NATIVE (this MTP release deliberates unconditionally; --reasoning-budget 0 and /no_think do not disable it). With room to finish: facts answer flawless (8/8 planets, accurate facts), logic answer EXACTLY matches ground truth with a clean minimal proof. Story/code/math still hit 2500 tokens mid-deliberation (it spends 1.5-2.4k tokens thinking even on small tasks). The 30B comparison on math/logic: also correct-track, also cap-truncated at 700, so those probes differentiate harness budgets, not models.
+
+### Verdict (tonight): DUAL FLAGSHIP
+
+- **Speed: 35B wins decisively** (+32%, 37-40 t/s real-world, A/B/A flanked).
+- **Quality: everything judgeable is flawless or superior**, consistent with its verified two-generation benchmark lead; full crown awaits an uncapped judged battery (4000+ token budgets).
+- **The honest cost: tokens-to-answer.** 30-90 s of visible deliberation before answers. For instant chat the 30B (turbo 42 t/s, answers in seconds) remains the daily driver; the 35B ships as Start-35B-Reasoning.bat for deep work. R12 (draft-mtp on its bundled head) directly attacks deliberation wall-time and is the next experiment.
+
 ### Next step (in motion)
 
 b10068 official binaries fetched to llama.cpp/bin-b10068/ (kept separate from the shipped b10064). Redo the battery there with proper template/parser handling; if quality holds vs the 30B transcripts, declare breakthrough (a), ship the launcher, and proceed immediately to R12 (draft-mtp on the bundled MTP head).

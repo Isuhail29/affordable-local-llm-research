@@ -138,3 +138,9 @@
 5.12.476.382 I slot print_timing: id  0 | task 9224 | n_decoded =   1641, tg =  36.27 t/s, tg_3s =  36.02 t/s
 5.15.487.035 I slot print_timing: id  0 | task 9224 | n_decoded =   1750, tg =  36.27 t/s, tg_3s =  36.20 t/s
 5.18.487.834 I slot print_timing: id  0 | task 9224 | n_decoded =   1858, tg =  36.25 t/s, tg_3s =  35.99 t/s
+5.21.506.906 I slot print_timing: id  0 | task 9224 | n_decoded =   1964, tg =  36.19 t/s, tg_3s =  35.11 t/s
+5.23.266.583 I slot print_timing: id  0 | task 9224 | prompt eval time =    1169.80 ms /   127 tokens (    9.21 ms per token,   108.57 tokens per second)
+5.23.266.597 I slot print_timing: id  0 | task 9224 |        eval time =   56029.45 ms /  2027 tokens (   27.64 ms per token,    36.18 tokens per second)
+5.23.266.599 I slot print_timing: id  0 | task 9224 |       total time =   57199.24 ms /  2154 tokens
+5.23.266.601 I slot print_timing: id  0 | task 9224 |    graphs reused =      11192
+5.23.266.654 I slot      release: id  0 | task 9224 | stop processing: n_tokens = 2153, truncated = 0
