@@ -1,0 +1,6 @@
+[INFO] llama-swap listening on http://127.0.0.1:9292
+[INFO] using nvidia-smi for GPU monitoring
+[INFO] Request 127.0.0.1 "GET /v1/models HTTP/1.1" 200 712 "curl/8.21.0" 0s
+2026/07/19 15:51:01 http: proxy error: dial tcp [::1]:5805: connectex: No connection could be made because the target machine actively refused it.
+[INFO] <qwen-8b-fast> Health check passed on http://localhost:5805/health
+[INFO] Request 127.0.0.1 "POST /v1/chat/completions HTTP/1.1" 200 861 "curl/8.21.0" 8.3297899s

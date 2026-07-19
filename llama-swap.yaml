@@ -1,0 +1,49 @@
+# AI Hub switchboard config (llama-swap). One API at http://127.0.0.1:9292/v1
+# Every model below auto-starts on first request and swaps out when another is asked for.
+# All configs are the lab's measured-optimal recipes (see experiments/).
+
+healthCheckTimeout: 600
+
+models:
+  "qwen-30b":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+
+  "qwen-30b-turbo":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1
+      --override-kv qwen3moe.expert_used_count=int:6 --port ${PORT}
+
+  "qwen-30b-64k":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
+      -ngl 99 --cpu-moe -fa on -c 65536 --mlock -t 12 -np 1 --port ${PORT}
+
+  "qwen-35b-reasoning":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin-b10068\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
+      -ngl 99 --n-cpu-moe 32 -fa on -c 16384 --mlock -t 12 -np 1 --port ${PORT}
+
+  "qwen-8b-fast":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-8B-Q4_K_M.gguf"
+      -ngl 34 -fa on -c 4096 -np 1 -t 8 --port ${PORT}
+
+  "glm-coder":
+    ttl: 1800
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin-b10068\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\GLM-4.7-Flash-UD-Q4_K_XL.gguf"
+      -ngl 99 --cpu-moe -fa on -c 16384 --mlock -t 12 -np 1 --jinja --port ${PORT}
