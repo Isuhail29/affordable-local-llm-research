@@ -1,0 +1,4 @@
+depth 25% : ctx=16861 tok (fresh 16861) | prefill 298.0 t/s | decode 18.23 t/s | VRAM 4526 MiB | GPU 87C
+depth 50% : ctx=33346 tok (fresh 16509) | prefill 242.2 t/s | decode 13.88 t/s | VRAM 4526 MiB | GPU 87C
+depth 75% : ctx=50922 tok (fresh 17600) | prefill 200.4 t/s | decode 10.46 t/s | VRAM 4526 MiB | GPU 87C
+depth 100% : ctx= tok (fresh ) | prefill 0 t/s | decode 0 t/s | VRAM 4526 MiB | GPU 84C
