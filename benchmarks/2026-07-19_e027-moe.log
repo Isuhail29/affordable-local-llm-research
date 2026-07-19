@@ -1,0 +1,21 @@
+ggml_cuda_init: failed to initialize CUDA: no CUDA-capable device is detected
+
+== GGML_OP_PROFILE: thread-0 wall time per op (node barriers included) ==
+ADD                     166320 nodes        343.0 ms     2.1 us/node   1.7%
+MUL                      18480 nodes        106.3 ms     5.8 us/node   0.5%
+DIV                      18480 nodes         27.0 ms     1.5 us/node   0.1%
+SUM_ROWS                 18480 nodes         27.0 ms     1.5 us/node   0.1%
+RMS_NORM                 74305 nodes        207.0 ms     2.8 us/node   1.0%
+MUL_MAT                  92785 nodes       7505.0 ms    80.9 us/node  36.3%
+MUL_MAT_ID               55440 nodes      11583.2 ms   208.9 us/node  56.0%
+GET_ROWS                 19635 nodes         44.9 ms     2.3 us/node   0.2%
+SET_ROWS                 36960 nodes         55.0 ms     1.5 us/node   0.3%
+SOFT_MAX                 18480 nodes         36.2 ms     2.0 us/node   0.2%
+ROPE                     36960 nodes        125.2 ms     3.4 us/node   0.6%
+CLAMP                    18480 nodes         27.2 ms     1.5 us/node   0.1%
+ARGSORT                  18480 nodes        117.2 ms     6.3 us/node   0.6%
+FLASH_ATTN_EXT           18480 nodes        403.9 ms    21.9 us/node   2.0%
+GLU                      18480 nodes         59.1 ms     3.2 us/node   0.3%
+  MUL_MAT_ID[gate/up]     36960 nodes       6813.2 ms   184.3 us/node
+  MUL_MAT_ID[down   ]     18480 nodes       4770.1 ms   258.1 us/node
+TOTAL                               20667.1 ms
