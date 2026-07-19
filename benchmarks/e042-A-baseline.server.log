@@ -1,0 +1,9 @@
+0.00.198.340 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.306.676 W srv  llama_server: -----------------
+0.00.306.689 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.306.689 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.306.690 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.306.690 W srv  llama_server: -----------------
+0.00.311.361 I srv    load_model: loading model 'C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf'
+0.01.407.242 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.02.205.440 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance

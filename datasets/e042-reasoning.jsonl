@@ -1,0 +1,12 @@
+{"id":1,"q":"A train leaves at 2:15 PM traveling 60 mph. A second train leaves the same station at 3:00 PM on the same track traveling 80 mph in the same direction. How many minutes after 3:00 PM does the second train catch the first? Give the answer as a whole number of minutes.","answer":"135"}
+{"id":2,"q":"A book has 250 pages. Maria reads 12 pages on day 1 and increases by 3 pages each subsequent day (15 on day 2, 18 on day 3, and so on). On which day number does she finish the book? Give just the day number.","answer":"10"}
+{"id":3,"q":"A shop sells pens at 3 for $2 and pencils at 5 for $1. Tom buys 12 pens and 20 pencils. He pays with a $20 bill. How many dollars change does he get? Give a whole number.","answer":"8"}
+{"id":4,"q":"In a class of 40 students, 25 play football, 18 play cricket, and 7 play neither. How many play both football and cricket? Give a whole number.","answer":"10"}
+{"id":5,"q":"A tank fills through pipe A in 6 hours and drains through pipe B in 9 hours. If both are open starting from empty, how many hours to fill the tank? Give a whole number.","answer":"18"}
+{"id":6,"q":"A number when divided by 7 leaves remainder 3, and when divided by 5 leaves remainder 2. What is the smallest positive such number? Give the number.","answer":"17"}
+{"id":7,"q":"A rectangle has perimeter 44 and area 120. What is the length of its longer side? Give a whole number.","answer":"12"}
+{"id":8,"q":"Sarah is 3 times as old as her son now. In 12 years she will be twice as old as him. How old is Sarah now? Give a whole number.","answer":"36"}
+{"id":9,"q":"A cyclist covers a route at 15 km/h and returns along the same route at 10 km/h. What is the average speed for the whole trip in km/h? Give a whole number.","answer":"12"}
+{"id":10,"q":"How many positive integers less than 100 are divisible by 3 or 5 but not by both? Give a whole number.","answer":"40"}
+{"id":11,"q":"A jar has red and blue marbles in ratio 3:5. After adding 16 red marbles the ratio becomes 1:1. How many blue marbles are in the jar? Give a whole number.","answer":"40"}
+{"id":12,"q":"A worker is paid $15/hour for the first 40 hours in a week and 1.5x that rate beyond 40 hours. In a week she earned $712.50. How many hours did she work? Give a whole number.","answer":"45"}
