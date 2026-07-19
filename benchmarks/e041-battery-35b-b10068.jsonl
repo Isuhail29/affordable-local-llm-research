@@ -1,0 +1,5 @@
+﻿{"model":"35b-b10068","prompt":"1-story","tps":40.23,"content_len":0,"reasoning_len":977,"text":""}
+{"model":"35b-b10068","prompt":"2-code","tps":39.18,"content_len":0,"reasoning_len":1107,"text":""}
+{"model":"35b-b10068","prompt":"3-facts","tps":38.40,"content_len":0,"reasoning_len":932,"text":""}
+{"model":"35b-b10068","prompt":"4-math","tps":38.32,"content_len":0,"reasoning_len":1840,"text":""}
+{"model":"35b-b10068","prompt":"5-logic","tps":37.78,"content_len":0,"reasoning_len":2197,"text":""}

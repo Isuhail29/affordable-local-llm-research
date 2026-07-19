@@ -142,6 +142,11 @@ The only route to QTIP-class quality in our RAM-bound regime (mainline closed th
 
 ---
 
+## Amendments (post-sweep, from verified tips)
+
+- **R21 (added 2026-07-19, from Kimi K3 verification): Kimi-Linear-48B-A3B head-to-head.** Moonshot's MIT-licensed preview of K3's exact KDA attention, mainline llama.cpp support since Feb 2026, IQ4_XS 26.5 GB fits our RAM, same A3B active class as our winners. The experiment: KDA vs Qwen3.6's GDN in the same class on the same rig, including long-context KV economics. Source: research-sweeps/2026-07-tip-kimi-k3/.
+- **Dated task 2026-07-27: K3 weights land.** Verify actual license text, read the technical report (KDA + Attention Residuals), scan for smaller family members. K3 itself (2.8T) can never run here; its architecture lineage is the prize.
+
 ## Skip list: killed ideas we never re-litigate
 
 1. **Classic separate-draft and short-ngram speculative decoding on A3B MoE** (draft-simple, ngram-simple, ngram-cache, short-draft ngram-mod, any vocab-matched small draft model). Killed twice: our E014, and thc1006's independent 19-config RTX 3090 study (all net-negative even at 100% acceptance, same expert-union mechanism). The only doors still open are native heads (R12, R17) and the long-draft saturation regime (R5).
