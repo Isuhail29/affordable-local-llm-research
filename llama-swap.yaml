@@ -1,6 +1,11 @@
 # AI Hub switchboard config (llama-swap). One API at http://127.0.0.1:9292/v1
 # Every model below auto-starts on first request and swaps out when another is asked for.
 # All configs are the lab's measured-optimal recipes (see experiments/).
+# Sampler flags are each model maker's recommended settings (E042): free quality, zero speed cost.
+#   Qwen3 instruct/coder/vl:  --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0
+#   Qwen3.6-35B reasoning:    --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0 --presence-penalty 1.5
+#   GLM-4.7:                  --temp 1.0 --top-p 0.95 --min-p 0
+# Note: chat clients (Open WebUI/opencode) can still override these per request.
 
 healthCheckTimeout: 600
 
@@ -10,14 +15,16 @@ models:
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q4_K_M.gguf"
-      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-coder-uncensored":
     ttl: 1800
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.Q4_K_M.gguf"
-      -ngl 99 --n-cpu-moe 40 -fa on -c 16384 --mlock -t 12 -np 1 --jinja --port ${PORT}
+      -ngl 99 --n-cpu-moe 40 -fa on -c 16384 --mlock -t 12 -np 1 --jinja
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-vision":
     ttl: 900
@@ -25,14 +32,16 @@ models:
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
       --mmproj "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-VL-30B-A3B-mmproj-F16.gguf"
-      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-30b":
     ttl: 900
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
-      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-30b-turbo":
     ttl: 900
@@ -40,32 +49,37 @@ models:
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
       -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1
-      --override-kv qwen3moe.expert_used_count=int:6 --port ${PORT}
+      --override-kv qwen3moe.expert_used_count=int:6
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-30b-64k":
     ttl: 900
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
-      -ngl 99 --cpu-moe -fa on -c 65536 --mlock -t 12 -np 1 --port ${PORT}
+      -ngl 99 --cpu-moe -fa on -c 65536 --mlock -t 12 -np 1
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "qwen-35b-reasoning":
     ttl: 900
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin-b10068\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
-      -ngl 99 --n-cpu-moe 32 -fa on -c 16384 --mlock -t 12 -np 1 --port ${PORT}
+      -ngl 99 --n-cpu-moe 32 -fa on -c 16384 --mlock -t 12 -np 1
+      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0 --presence-penalty 1.5 --port ${PORT}
 
   "qwen-8b-fast":
     ttl: 900
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-8B-Q4_K_M.gguf"
-      -ngl 34 -fa on -c 4096 -np 1 -t 8 --port ${PORT}
+      -ngl 34 -fa on -c 4096 -np 1 -t 8
+      --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --port ${PORT}
 
   "glm-coder":
     ttl: 1800
     cmd: >
       "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin-b10068\llama-server.exe"
       -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\GLM-4.7-Flash-UD-Q4_K_XL.gguf"
-      -ngl 99 --cpu-moe -fa on -c 16384 --mlock -t 12 -np 1 --jinja --port ${PORT}
+      -ngl 99 --cpu-moe -fa on -c 16384 --mlock -t 12 -np 1 --jinja
+      --temp 1.0 --top-p 0.95 --min-p 0 --port ${PORT}
