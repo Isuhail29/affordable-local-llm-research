@@ -47,6 +47,8 @@ Dense 8B control: MUL_MAT 98.0% of time, extraction 39.9 GB/s this session.
 
 **H3 falsified in the informative direction**: down-experts (768-column, 3-superblock rows) extract 26.7 GB/s vs 37.5 for their gate/up siblings in the same run: a 29% intra-run penalty, immune to thermal confounds. Worth ~3.9 ms/token; fixing it entirely would buy ~7% pure-CPU and an estimated 9-12% on the hybrid config where experts dominate CPU time.
 
+**[CORRECTED BY E028]: the down "penalty" was a units error.** The down-expert tensors are Q6_K (0.820 B/param), not Q4_K (0.563): their true per-node bytes are 10.32 MB, giving 42.3 GB/s: BETTER than gate/up. See experiments/028-two-row-kernel for the full correction. The per-op time attribution in this experiment stands; only the derived GB/s for the down bin was wrong.
+
 **The self-correction this experiment forced: our historical cross-session comparison (47.5 vs 30 GB/s) was partially a thermal artifact.** The dense control ran at 39.9 GB/s today vs 47.5 in an earlier, cooler session; hours of continuous benchmarking shift the machine's whole performance level. Intra-run contrasts (down vs gate/up) are trustworthy; cross-session absolute comparisons need thermal control. This retroactively shrinks the "13 ms mystery" that motivated E026/E027: it decomposes into ~4 ms of genuine short-row penalty, ~4 ms of glue and attention structure, and session-level thermal variance that inflated the rest.
 
 ## Lessons Learned

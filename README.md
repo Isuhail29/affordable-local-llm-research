@@ -2,6 +2,8 @@
 
 A long-term research and engineering project to discover, prototype, benchmark, and document techniques for running large open-source LLMs on inexpensive consumer hardware.
 
+**New here? Read [STORY.md](STORY.md)**: the plain-language account of the full first research arc (ten experiments, five falsified theories, one shipped breakthrough, and a mystery that dissolved under honest measurement).
+
 We do not assume we already know the answers. Every optimization gets measured. Every experiment produces data.
 
 ## The core problem
