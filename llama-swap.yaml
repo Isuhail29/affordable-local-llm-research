@@ -5,6 +5,20 @@
 healthCheckTimeout: 600
 
 models:
+  "qwen-30b-uncensored":
+    ttl: 900
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q4_K_M.gguf"
+      -ngl 99 --n-cpu-moe 40 -fa on -c 8192 --mlock -t 12 -np 1 --port ${PORT}
+
+  "qwen-coder-uncensored":
+    ttl: 1800
+    cmd: >
+      "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\llama.cpp\bin\llama-server.exe"
+      -m "C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated.Q4_K_M.gguf"
+      -ngl 99 --n-cpu-moe 40 -fa on -c 16384 --mlock -t 12 -np 1 --jinja --port ${PORT}
+
   "qwen-30b":
     ttl: 900
     cmd: >
