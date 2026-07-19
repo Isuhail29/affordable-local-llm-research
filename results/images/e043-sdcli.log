@@ -1,0 +1,40 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8150 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8150 MiB
+stable-diffusion.cpp:706  - loading model from 'models\ponyDiffusionV6XL.safetensors'
+[INFO ] model_loader.cpp:242  - load models\ponyDiffusionV6XL.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:789  - loading vae from 'models\sdxl_vae.safetensors'
+[INFO ] model_loader.cpp:242  - load models\sdxl_vae.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:850  - Version: SDXL 
+[INFO ] stable-diffusion.cpp:905  - Weight type stat:                      f32: 248  |     f16: 2265 
+[INFO ] stable-diffusion.cpp:906  - Conditioner weight type stat:          f16: 585  
+[INFO ] stable-diffusion.cpp:907  - Diffusion model weight type stat:      f16: 1680 
+[INFO ] stable-diffusion.cpp:908  - VAE weight type stat:                  f32: 248  
+[INFO ] stable-diffusion.cpp:1381 - using VAE for encoding / decoding
+[INFO ] auto_encoder_kl.hpp:527  - vae decoder: ch = 128
+[INFO ] stable-diffusion.cpp:1620 - total params memory size = 6624.11MB (VRAM 6624.11MB, RAM 0.00MB): text_encoders 1564.36MB(VRAM), diffusion_model 4900.07MB(VRAM), vae 159.68MB(VRAM), controlnet 0.00MB(N/A), extensions 0.00MB(N/A)
+[INFO ] stable-diffusion.cpp:1703 - running in eps-prediction mode
+[INFO ] stable-diffusion.cpp:5307 - generate_image 1024x1024
+[INFO ] denoiser.hpp:1026 - get_sigmas with discrete scheduler
+[INFO ] stable-diffusion.cpp:4144 - sampling using Euler A method
+[INFO ]   |##################################################| 178/178 - 1.06GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.20s (read: 0.05s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.01s)
+[INFO ]   |#                                                 | 1/374 - 0.00MB/s[K  |#############################                     | 210/374 - 2.57GB/s[K  |##################################################| 374/374 - 2.98GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.42s (read: 0.31s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.05s)
+[INFO ]   |##################################################| 15/15 - 195.49MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.00s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:4987 - get_learned_condition completed, taking 1.50s
+[INFO ] stable-diffusion.cpp:5358 - generating image: 1/1 - seed 42
+[INFO ]   |#                                                 | 4/1680 - 0.00MB/s[K  |#######                                           | 218/1680 - 1.05GB/s[K  |############                                      | 388/1680 - 1.87GB/s[K  |#################                                 | 564/1680 - 2.23GB/s[K  |#######################                           | 743/1680 - 2.40GB/s[K  |############################                      | 918/1680 - 2.50GB/s[K  |#################################                 | 1107/1680 - 2.60GB/s[K  |#######################################           | 1288/1680 - 2.67GB/s[K  |############################################      | 1454/1680 - 2.69GB/s[K  |##################################################| 1680/1680 - 2.63GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 1.82s (read: 1.43s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.25s)
+[INFO ]   |==>                                               | 1/25 - 3.18s/it[K  |====>                                             | 2/25 - 1.38s/it[K  |======>                                           | 3/25 - 1.72s/it[K  |========>                                         | 4/25 - 1.66s/it[K  |==========>                                       | 5/25 - 1.52s/it[K  |============>                                     | 6/25 - 1.60s/it[K  |==============>                                   | 7/25 - 1.50s/it[K  |================>                                 | 8/25 - 1.52s/it[K  |==================>                               | 9/25 - 1.56s/it[K  |====================>                             | 10/25 - 1.56s/it[K  |======================>                           | 11/25 - 1.60s/it[K  |========================>                         | 12/25 - 1.64s/it[K  |==========================>                       | 13/25 - 1.64s/it[K  |============================>                     | 14/25 - 1.73s/it[K  |==============================>                   | 15/25 - 1.68s/it[K  |================================>                 | 16/25 - 1.71s/it[K  |==================================>               | 17/25 - 1.74s/it[K  |====================================>             | 18/25 - 1.74s/it[K  |======================================>           | 19/25 - 1.74s/it[K  |========================================>         | 20/25 - 1.76s/it[K  |==========================================>       | 21/25 - 1.75s/it[K  |============================================>     | 22/25 - 1.76s/it[K  |==============================================>   | 23/25 - 1.80s/it[K  |================================================> | 24/25 - 1.83s/it[K  |==================================================| 25/25 - 1.86s/it[K
+stable-diffusion.cpp:5390 - sampling completed, taking 43.22s
+[INFO ] stable-diffusion.cpp:5404 - generating 1 latent images completed, taking 43.22s
+[INFO ] stable-diffusion.cpp:5012 - decoding 1 latents
+[INFO ]   |##################################################| 140/140 - 903.30MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.04s, memcpy: 0.00s, convert: 0.01s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:5078 - latent 1 decoded, taking 25.03s
+[INFO ] stable-diffusion.cpp:5082 - decode_first_stage completed, taking 25.03s
+[INFO ] stable-diffusion.cpp:5540 - generate_image completed in 69.81s
+[INFO ] main.cpp:490  - save result image 0 to 'results\images\e043-first-image.png' (success)
+[INFO ] main.cpp:562  - 1/1 images saved
+[INFO ] 

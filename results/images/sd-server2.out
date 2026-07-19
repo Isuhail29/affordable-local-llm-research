@@ -1,0 +1,38 @@
+stable-diffusion.cpp:706  - loading model from 'models\ponyDiffusionV6XL.safetensors'
+[INFO ] model_loader.cpp:242  - load models\ponyDiffusionV6XL.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:789  - loading vae from 'models\sdxl_vae.safetensors'
+[INFO ] model_loader.cpp:242  - load models\sdxl_vae.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:850  - Version: SDXL 
+[INFO ] stable-diffusion.cpp:905  - Weight type stat:                      f32: 248  |     f16: 2265 
+[INFO ] stable-diffusion.cpp:906  - Conditioner weight type stat:          f16: 585  
+[INFO ] stable-diffusion.cpp:907  - Diffusion model weight type stat:      f16: 1680 
+[INFO ] stable-diffusion.cpp:908  - VAE weight type stat:                  f32: 248  
+[INFO ] stable-diffusion.cpp:1381 - using VAE for encoding / decoding
+[INFO ] auto_encoder_kl.hpp:527  - vae decoder: ch = 128
+[INFO ] stable-diffusion.cpp:1499 - Using flash attention in the diffusion model
+[INFO ] stable-diffusion.cpp:1620 - total params memory size = 6624.11MB (VRAM 6624.11MB, RAM 0.00MB): text_encoders 1564.36MB(VRAM), diffusion_model 4900.07MB(VRAM), vae 159.68MB(VRAM), controlnet 0.00MB(N/A), extensions 0.00MB(N/A)
+[INFO ] stable-diffusion.cpp:1703 - running in eps-prediction mode
+[INFO ] main.cpp:148  - listening on: http://127.0.0.1:8082
+[INFO ] stable-diffusion.cpp:5307 - generate_image 512x512
+[INFO ] denoiser.hpp:1026 - get_sigmas with discrete scheduler
+[INFO ] stable-diffusion.cpp:4144 - sampling using Euler A method
+[INFO ]   |##################################################| 178/178 - 1.03GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.05s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.01s)
+[INFO ]   |##############################                    | 220/374 - 2.71GB/s[K  |##################################################| 374/374 - 3.10GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.41s (read: 0.30s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.05s)
+[INFO ]   |##################################################| 15/15 - 196.43MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.00s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:4987 - get_learned_condition completed, taking 1.72s
+[INFO ] stable-diffusion.cpp:5358 - generating image: 1/1 - seed 42
+[INFO ]   |#######                                           | 222/1680 - 1.06GB/s[K  |############                                      | 402/1680 - 1.97GB/s[K  |##################                                | 604/1680 - 2.34GB/s[K  |#########################                         | 811/1680 - 2.51GB/s[K  |##############################                    | 980/1680 - 2.57GB/s[K  |####################################              | 1176/1680 - 2.66GB/s[K  |#########################################         | 1372/1680 - 2.73GB/s[K  |##################################################| 1680/1680 - 2.80GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 1.71s (read: 1.40s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.24s)
+[INFO ]   |==>                                               | 1/20 - 1.97s/it[K  |=====>                                            | 2/20 - 4.40it/s[K  |=======>                                          | 3/20 - 4.39it/s[K  |==========>                                       | 4/20 - 4.37it/s[K  |============>                                     | 5/20 - 4.35it/s[K  |===============>                                  | 6/20 - 4.38it/s[K  |=================>                                | 7/20 - 4.39it/s[K  |====================>                             | 8/20 - 4.42it/s[K  |======================>                           | 9/20 - 4.30it/s[K  |=========================>                        | 10/20 - 4.30it/s[K  |===========================>                      | 11/20 - 4.34it/s[K  |==============================>                   | 12/20 - 4.33it/s[K  |================================>                 | 13/20 - 4.25it/s[K  |===================================>              | 14/20 - 4.28it/s[K  |=====================================>            | 15/20 - 4.31it/s[K  |========================================>         | 16/20 - 4.31it/s[K  |==========================================>       | 17/20 - 4.26it/s[K  |=============================================>    | 18/20 - 4.25it/s[K  |===============================================>  | 19/20 - 4.28it/s[K  |==================================================| 20/20 - 4.17it/s[K
+stable-diffusion.cpp:5390 - sampling completed, taking 6.38s
+[INFO ] stable-diffusion.cpp:5404 - generating 1 latent images completed, taking 6.38s
+[INFO ] stable-diffusion.cpp:5012 - decoding 1 latents
+[INFO ]   |##################################################| 140/140 - 934.60MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.20s (read: 0.04s, memcpy: 0.00s, convert: 0.01s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:5078 - latent 1 decoded, taking 0.97s
+[INFO ] stable-diffusion.cpp:5082 - decode_first_stage completed, taking 0.97s
+[INFO ] stable-diffusion.cpp:5540 - generate_image completed in 9.08s
+[INFO ] 
