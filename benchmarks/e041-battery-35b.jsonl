@@ -1,0 +1,5 @@
+﻿{"model":"35b","prompt":"1-story","tps":39.29,"n":256,"text":""}
+{"model":"35b","prompt":"2-code","tps":38.83,"n":256,"text":""}
+{"model":"35b","prompt":"3-facts","tps":38.13,"n":256,"text":""}
+{"model":"35b","prompt":"4-math","tps":37.38,"n":700,"text":""}
+{"model":"35b","prompt":"5-logic","tps":37.26,"n":700,"text":""}
