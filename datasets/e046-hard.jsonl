@@ -1,0 +1,12 @@
+{"id": 1, "q": "How many triples of positive integers (a, b, c) satisfy a + b + c = 15 and a < b < c?", "answer": "12"}
+{"id": 2, "q": "In how many ways can the six letters A, B, C, D, E, F be arranged so that no letter stays in its original position?", "answer": "265"}
+{"id": 3, "q": "In how many ways can 3 rooks be placed on a 4x4 chessboard so that no two rooks share a row or a column?", "answer": "96"}
+{"id": 4, "q": "How many 5-digit palindromes are divisible by 11?", "answer": "82"}
+{"id": 5, "q": "What is the smallest integer n greater than 1 such that each of n, n+1, and n+2 is divisible by a perfect square greater than 1?", "answer": "48"}
+{"id": 6, "q": "How many subsets of the set {1, 2, 3, ..., 10} contain no two consecutive integers? (Include the empty set.)", "answer": "144"}
+{"id": 7, "q": "How many integers from 1 to 1000 inclusive are divisible by none of 2, 3, and 5?", "answer": "266"}
+{"id": 8, "q": "How many 4-digit positive integers have digits that are strictly decreasing from left to right?", "answer": "210"}
+{"id": 9, "q": "How many positive divisors does 2024^2 have?", "answer": "63"}
+{"id": 10, "q": "What is the smallest positive integer that can be written as the sum of two positive cubes in two different ways?", "answer": "1729"}
+{"id": 11, "q": "For how many integers n from 1 to 100 inclusive is n^2 + n + 41 NOT a prime number?", "answer": "14"}
+{"id": 12, "q": "How many trailing zeros does 1000! have when written in base 12?", "answer": "497"}
