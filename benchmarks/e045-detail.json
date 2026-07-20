@@ -1,0 +1,324 @@
+{
+ "summary": {
+  "K": 4,
+  "problems": 24,
+  "wall_sec": 689.4,
+  "single_sample_accuracy_pct": 91.7,
+  "majority_vote_accuracy_pct": 91.7,
+  "gain_points": 0.0
+ },
+ "detail": [
+  {
+   "id": 1,
+   "gold": "135",
+   "answers": [
+    "135",
+    "135",
+    "135",
+    "135"
+   ],
+   "n_correct": 4,
+   "vote": "135",
+   "vote_correct": true
+  },
+  {
+   "id": 2,
+   "gold": "10",
+   "answers": [
+    "0",
+    "6400",
+    "644",
+    "2"
+   ],
+   "n_correct": 0,
+   "vote": "0",
+   "vote_correct": false
+  },
+  {
+   "id": 3,
+   "gold": "8",
+   "answers": [
+    "8",
+    "8",
+    "8",
+    "8"
+   ],
+   "n_correct": 4,
+   "vote": "8",
+   "vote_correct": true
+  },
+  {
+   "id": 4,
+   "gold": "10",
+   "answers": [
+    "10",
+    "10",
+    "10",
+    "10"
+   ],
+   "n_correct": 4,
+   "vote": "10",
+   "vote_correct": true
+  },
+  {
+   "id": 5,
+   "gold": "18",
+   "answers": [
+    "18",
+    "18",
+    "18",
+    "18"
+   ],
+   "n_correct": 4,
+   "vote": "18",
+   "vote_correct": true
+  },
+  {
+   "id": 6,
+   "gold": "17",
+   "answers": [
+    "2",
+    "4",
+    "2",
+    "7"
+   ],
+   "n_correct": 0,
+   "vote": "2",
+   "vote_correct": false
+  },
+  {
+   "id": 7,
+   "gold": "12",
+   "answers": [
+    "12",
+    "12",
+    "12",
+    "12"
+   ],
+   "n_correct": 4,
+   "vote": "12",
+   "vote_correct": true
+  },
+  {
+   "id": 8,
+   "gold": "36",
+   "answers": [
+    "36",
+    "36",
+    "36",
+    "36"
+   ],
+   "n_correct": 4,
+   "vote": "36",
+   "vote_correct": true
+  },
+  {
+   "id": 9,
+   "gold": "12",
+   "answers": [
+    "12",
+    "12",
+    "12",
+    "12"
+   ],
+   "n_correct": 4,
+   "vote": "12",
+   "vote_correct": true
+  },
+  {
+   "id": 10,
+   "gold": "40",
+   "answers": [
+    "40",
+    "40",
+    "40",
+    "40"
+   ],
+   "n_correct": 4,
+   "vote": "40",
+   "vote_correct": true
+  },
+  {
+   "id": 11,
+   "gold": "40",
+   "answers": [
+    "40",
+    "40",
+    "40",
+    "40"
+   ],
+   "n_correct": 4,
+   "vote": "40",
+   "vote_correct": true
+  },
+  {
+   "id": 12,
+   "gold": "45",
+   "answers": [
+    "45",
+    "45",
+    "45",
+    "45"
+   ],
+   "n_correct": 4,
+   "vote": "45",
+   "vote_correct": true
+  },
+  {
+   "id": 13,
+   "gold": "80",
+   "answers": [
+    "80",
+    "80",
+    "80",
+    "80"
+   ],
+   "n_correct": 4,
+   "vote": "80",
+   "vote_correct": true
+  },
+  {
+   "id": 14,
+   "gold": "6",
+   "answers": [
+    "6",
+    "6",
+    "6",
+    "6"
+   ],
+   "n_correct": 4,
+   "vote": "6",
+   "vote_correct": true
+  },
+  {
+   "id": 15,
+   "gold": "25",
+   "answers": [
+    "25",
+    "25",
+    "25",
+    "25"
+   ],
+   "n_correct": 4,
+   "vote": "25",
+   "vote_correct": true
+  },
+  {
+   "id": 16,
+   "gold": "54",
+   "answers": [
+    "54",
+    "54",
+    "54",
+    "54"
+   ],
+   "n_correct": 4,
+   "vote": "54",
+   "vote_correct": true
+  },
+  {
+   "id": 17,
+   "gold": "25",
+   "answers": [
+    "25",
+    "25",
+    "25",
+    "25"
+   ],
+   "n_correct": 4,
+   "vote": "25",
+   "vote_correct": true
+  },
+  {
+   "id": 18,
+   "gold": "15",
+   "answers": [
+    "15",
+    "15",
+    "15",
+    "15"
+   ],
+   "n_correct": 4,
+   "vote": "15",
+   "vote_correct": true
+  },
+  {
+   "id": 19,
+   "gold": "18",
+   "answers": [
+    "18",
+    "18",
+    "18",
+    "18"
+   ],
+   "n_correct": 4,
+   "vote": "18",
+   "vote_correct": true
+  },
+  {
+   "id": 20,
+   "gold": "196",
+   "answers": [
+    "196",
+    "196",
+    "196",
+    "196"
+   ],
+   "n_correct": 4,
+   "vote": "196",
+   "vote_correct": true
+  },
+  {
+   "id": 21,
+   "gold": "36",
+   "answers": [
+    "36",
+    "36",
+    "36",
+    "36"
+   ],
+   "n_correct": 4,
+   "vote": "36",
+   "vote_correct": true
+  },
+  {
+   "id": 22,
+   "gold": "14",
+   "answers": [
+    "14",
+    "14",
+    "14",
+    "14"
+   ],
+   "n_correct": 4,
+   "vote": "14",
+   "vote_correct": true
+  },
+  {
+   "id": 23,
+   "gold": "156",
+   "answers": [
+    "156",
+    "156",
+    "156",
+    "156"
+   ],
+   "n_correct": 4,
+   "vote": "156",
+   "vote_correct": true
+  },
+  {
+   "id": 24,
+   "gold": "20",
+   "answers": [
+    "20",
+    "20",
+    "20",
+    "20"
+   ],
+   "n_correct": 4,
+   "vote": "20",
+   "vote_correct": true
+  }
+ ]
+}
