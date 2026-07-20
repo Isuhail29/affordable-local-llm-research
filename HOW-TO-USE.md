@@ -35,8 +35,11 @@
 1. **Close the AI Hub first** if it has a model loaded (image gen and big LLMs share the 8 GB GPU).
 2. Double-click **Start-ImageGen.bat**. Keep its window open. It serves at http://127.0.0.1:8082/v1.
 3. In Open WebUI: **Settings > Images > Engine = OpenAI**, Base URL `http://127.0.0.1:8082/v1`, then click the image icon in any chat.
-4. Model is Pony Diffusion V6 XL (uncensored). Prompt tips: start prompts with `score_9, score_8_up,` (Pony quality tags). It is strongest at art/illustration/anime; for photoreal objects it needs careful tagging. A dedicated photoreal checkpoint (Juggernaut XL) can be added later with the same setup.
-5. ~70 seconds per 1024x1024 image, faster at 768 or fewer steps.
+4. **Start-ImageGen.bat now asks which model (press 1, 2, or 3):**
+   - **1 Pony V6 XL** - art / illustration / anime. Start prompts with `score_9, score_8_up,`. ~77s.
+   - **2 Juggernaut XL** - photorealistic (people, objects, scenes). Normal prompts, no score tags. ~90s. Best everyday photo model.
+   - **3 Chroma1-HD** - highest quality, Flux-class, follows complex prompts best. ~3 min (slower). Uncensored by design.
+5. All three are uncensored. Faster images: lower resolution (768) or fewer steps.
 
 ## The one rule
 
