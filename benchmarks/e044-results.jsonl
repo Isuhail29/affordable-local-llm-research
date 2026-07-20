@@ -1,0 +1,5 @@
+{"tag": "K1-first", "K": 1, "wall_sec": 6.18, "total_tokens": 200, "aggregate_tps": 32.38, "avg_per_request_tps": 34.89}
+{"tag": "K2", "K": 2, "wall_sec": 9.33, "total_tokens": 400, "aggregate_tps": 42.85, "avg_per_request_tps": 22.65}
+{"tag": "K4", "K": 4, "wall_sec": 14.32, "total_tokens": 800, "aggregate_tps": 55.88, "avg_per_request_tps": 14.87}
+{"tag": "K8", "K": 8, "wall_sec": 22.27, "total_tokens": 1600, "aggregate_tps": 71.84, "avg_per_request_tps": 9.4}
+{"tag": "K1-reflank", "K": 1, "wall_sec": 6.15, "total_tokens": 200, "aggregate_tps": 32.52, "avg_per_request_tps": 34.35}

@@ -1,0 +1,30 @@
+0.00.737.462 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.790.465 W srv  llama_server: -----------------
+0.00.790.470 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.790.471 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.790.471 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.790.471 W srv  llama_server: -----------------
+0.00.798.966 I srv    load_model: loading model 'C:\Users\Sohail\Documents\Affordable High-Performance Local LLM Research\models\Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf'
+0.01.220.872 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.247.162 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.08.538.970 I srv    load_model: initializing, n_slots = 2, n_ctx_slot = 4096, kv_unified = 'false'
+0.08.550.736 I srv  llama_server: model loaded
+0.08.550.748 I srv  llama_server: listening on http://127.0.0.1:8080
+0.10.130.655 I slot get_availabl: id  1 | task -1 | selected slot by LRU, t_last = -1
+0.10.130.700 I slot launch_slot_: id  1 | task 0 | processing task, is_child = 0
+0.10.429.937 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.10.430.002 I slot launch_slot_: id  0 | task 2 | processing task, is_child = 0
+0.14.991.568 I slot print_timing: id  1 | task 0 | n_decoded =    100, tg =  21.92 t/s, tg_3s =  21.92 t/s
+0.15.036.184 I slot print_timing: id  0 | task 2 | n_decoded =    100, tg =  23.11 t/s, tg_3s =  23.11 t/s
+0.17.996.944 I slot print_timing: id  1 | task 0 | n_decoded =    168, tg =  22.20 t/s, tg_3s =  22.63 t/s
+0.18.038.339 I slot print_timing: id  0 | task 2 | n_decoded =    168, tg =  22.92 t/s, tg_3s =  22.65 t/s
+0.19.382.564 I slot print_timing: id  1 | task 0 | prompt eval time =     299.20 ms /    21 tokens (   14.25 ms per token,    70.19 tokens per second)
+0.19.382.575 I slot print_timing: id  1 | task 0 |        eval time =    8952.62 ms /   200 tokens (   44.76 ms per token,    22.34 tokens per second)
+0.19.382.577 I slot print_timing: id  1 | task 0 |       total time =    9251.83 ms /   221 tokens
+0.19.382.582 I slot print_timing: id  1 | task 0 |    graphs reused =        198
+0.19.382.620 I slot      release: id  1 | task 0 | stop processing: n_tokens = 220, truncated = 0
+0.19.419.903 I slot print_timing: id  0 | task 2 | prompt eval time =     278.47 ms /    21 tokens (   13.26 ms per token,    75.41 tokens per second)
+0.19.419.913 I slot print_timing: id  0 | task 2 |        eval time =    8711.41 ms /   200 tokens (   43.56 ms per token,    22.96 tokens per second)
+0.19.419.914 I slot print_timing: id  0 | task 2 |       total time =    8989.88 ms /   221 tokens
+0.19.419.915 I slot print_timing: id  0 | task 2 |    graphs reused =        198
+0.19.419.944 I slot      release: id  0 | task 2 | stop processing: n_tokens = 220, truncated = 0
