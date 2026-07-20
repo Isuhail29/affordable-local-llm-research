@@ -1,0 +1,39 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8150 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8150 MiB
+stable-diffusion.cpp:706  - loading model from 'models\Juggernaut-XL-v9.safetensors'
+[INFO ] model_loader.cpp:242  - load models\Juggernaut-XL-v9.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:850  - Version: SDXL 
+[INFO ] stable-diffusion.cpp:905  - Weight type stat:                      f32: 248  |     f16: 2265 
+[INFO ] stable-diffusion.cpp:906  - Conditioner weight type stat:          f16: 585  
+[INFO ] stable-diffusion.cpp:907  - Diffusion model weight type stat:      f16: 1680 
+[INFO ] stable-diffusion.cpp:908  - VAE weight type stat:                  f32: 248  
+[INFO ] stable-diffusion.cpp:1381 - using VAE for encoding / decoding
+[INFO ] auto_encoder_kl.hpp:527  - vae decoder: ch = 128
+[INFO ] stable-diffusion.cpp:1352 - No valid VAE specified with --vae or --force-sdxl-vae-conv-scale flag set, using Conv2D scale 0.031
+[WARN ] stable-diffusion.cpp:1620 - total params memory size = 6624.11MB (VRAM 6624.11MB, RAM 0.00MB): text_encoders 1564.36MB(VRAM), diffusion_model 4900.07MB(VRAM), vae 159.68MB(VRAM), controlnet 0.00MB(N/A), extensions 0.00MB(N/A)
+[INFO ] stable-diffusion.cpp:1703 - running in eps-prediction mode
+[INFO ] stable-diffusion.cpp:5307 - generate_image 1024x1024
+[INFO ] denoiser.hpp:1026 - get_sigmas with discrete scheduler
+[INFO ] stable-diffusion.cpp:4144 - sampling using DPM++ (2M) method
+[INFO ]   |##################################################| 178/178 - 1.04GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.05s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.01s)
+[INFO ]   |##########################                        | 192/374 - 2.21GB/s[K  |##################################################| 374/374 - 2.81GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.45s (read: 0.32s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.05s)
+[INFO ]   |##################################################| 15/15 - 195.49MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.00s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:4987 - get_learned_condition completed, taking 1.54s
+[INFO ] stable-diffusion.cpp:5358 - generating image: 1/1 - seed 42
+[INFO ]   |#######                                           | 223/1680 - 1.04GB/s[K  |############                                      | 400/1680 - 1.82GB/s[K  |##################                                | 582/1680 - 2.17GB/s[K  |#######################                           | 766/1680 - 2.34GB/s[K  |#############################                     | 949/1680 - 2.42GB/s[K  |##################################                | 1127/1680 - 2.50GB/s[K  |#######################################           | 1296/1680 - 2.56GB/s[K  |#############################################     | 1480/1680 - 2.59GB/s[K  |##################################################| 1680/1680 - 2.50GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 1.92s (read: 1.57s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.20s)
+[INFO ]   |==>                                               | 1/25 - 3.27s/it[K  |====>                                             | 2/25 - 1.34s/it[K  |======>                                           | 3/25 - 1.36s/it[K  |========>                                         | 4/25 - 1.40s/it[K  |==========>                                       | 5/25 - 1.40s/it[K  |============>                                     | 6/25 - 1.41s/it[K  |==============>                                   | 7/25 - 1.46s/it[K  |================>                                 | 8/25 - 1.46s/it[K  |==================>                               | 9/25 - 1.49s/it[K  |====================>                             | 10/25 - 1.50s/it[K  |======================>                           | 11/25 - 1.51s/it[K  |========================>                         | 12/25 - 1.53s/it[K  |==========================>                       | 13/25 - 1.57s/it[K  |============================>                     | 14/25 - 1.58s/it[K  |==============================>                   | 15/25 - 1.62s/it[K  |================================>                 | 16/25 - 1.66s/it[K  |==================================>               | 17/25 - 1.63s/it[K  |====================================>             | 18/25 - 1.67s/it[K  |======================================>           | 19/25 - 1.67s/it[K  |========================================>         | 20/25 - 1.70s/it[K  |==========================================>       | 21/25 - 1.72s/it[K  |============================================>     | 22/25 - 1.75s/it[K  |==============================================>   | 23/25 - 1.76s/it[K  |================================================> | 24/25 - 1.75s/it[K  |==================================================| 25/25 - 1.78s/it[K
+stable-diffusion.cpp:5390 - sampling completed, taking 41.06s
+[INFO ] stable-diffusion.cpp:5404 - generating 1 latent images completed, taking 41.06s
+[INFO ] stable-diffusion.cpp:5012 - decoding 1 latents
+[INFO ]   |##################################################| 140/140 - 899.00MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.05s, memcpy: 0.00s, convert: 0.02s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:5078 - latent 1 decoded, taking 47.89s
+[INFO ] stable-diffusion.cpp:5082 - decode_first_stage completed, taking 47.89s
+[INFO ] stable-diffusion.cpp:5540 - generate_image completed in 90.56s
+[INFO ] main.cpp:490  - save result image 0 to 'results\images\e043-juggernaut-apple.png' (success)
+[INFO ] main.cpp:562  - 1/1 images saved
+[INFO ] 

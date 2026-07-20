@@ -1,0 +1,41 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8150 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8150 MiB
+stable-diffusion.cpp:713  - loading diffusion model from 'models\Chroma1-HD-Q5_K_S.gguf'
+[INFO ] model_loader.cpp:236  - load models\Chroma1-HD-Q5_K_S.gguf using gguf format
+[INFO ] stable-diffusion.cpp:760  - loading t5xxl from 'models\t5xxl-Q5_K_M.gguf'
+[INFO ] model_loader.cpp:236  - load models\t5xxl-Q5_K_M.gguf using gguf format
+[INFO ] stable-diffusion.cpp:789  - loading vae from 'models\flux-ae.safetensors'
+[INFO ] model_loader.cpp:242  - load models\flux-ae.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:850  - Version: Flux 
+[INFO ] stable-diffusion.cpp:905  - Weight type stat:                      f32: 694  |    q5_K: 372  |    q6_K: 25   |    bf16: 15   
+[INFO ] stable-diffusion.cpp:906  - Conditioner weight type stat:          f32: 50   |    q5_K: 144  |    q6_K: 25   
+[INFO ] stable-diffusion.cpp:907  - Diffusion model weight type stat:      f32: 400  |    q5_K: 228  |    bf16: 15   
+[INFO ] stable-diffusion.cpp:908  - VAE weight type stat:                  f32: 244  
+[INFO ] flux.hpp:1429 - Using pruned modulation (Chroma)
+[INFO ] stable-diffusion.cpp:1381 - using VAE for encoding / decoding
+[INFO ] auto_encoder_kl.hpp:527  - vae decoder: ch = 128
+[INFO ] stable-diffusion.cpp:1499 - Using flash attention in the diffusion model
+[INFO ] stable-diffusion.cpp:1620 - total params memory size = 9994.39MB (VRAM 6366.37MB, RAM 3628.02MB): text_encoders 3628.02MB(RAM), diffusion_model 6206.37MB(VRAM), vae 160.00MB(VRAM), controlnet 0.00MB(N/A), extensions 0.00MB(N/A)
+[INFO ] stable-diffusion.cpp:1724 - running in Flux FLOW mode
+[INFO ] stable-diffusion.cpp:5307 - generate_image 768x768
+[INFO ] stable-diffusion.cpp:2946 - Using 'flux_kontext' preset for reference images
+[INFO ] denoiser.hpp:1088 - get_sigmas with Flux scheduler
+[INFO ] stable-diffusion.cpp:4144 - sampling using Euler method
+[INFO ]   |############                                      | 52/219 - 2.14GB/s[K  |######################                            | 96/219 - 2.62GB/s[K  |###############################                   | 135/219 - 2.65GB/s[K  |#####################################             | 159/219 - 2.39GB/s[K  |###########################################       | 185/219 - 2.26GB/s[K  |################################################  | 208/219 - 2.16GB/s[K  |##################################################| 219/219 - 2.08GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 1.51s (read: 1.28s, memcpy: 0.00s, convert: 0.08s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:4987 - get_learned_condition completed, taking 51.61s
+[INFO ] stable-diffusion.cpp:5358 - generating image: 1/1 - seed 42
+[INFO ]   |#####                                             | 53/643 - 1.35GB/s[K  |########                                          | 93/643 - 1.42GB/s[K  |#############                                     | 157/643 - 1.95GB/s[K  |##################                                | 229/643 - 2.13GB/s[K  |########################                          | 299/643 - 2.18GB/s[K  |#############################                     | 369/643 - 2.23GB/s[K  |###################################               | 441/643 - 2.26GB/s[K  |######################################            | 487/643 - 2.30GB/s[K  |#########################################         | 525/643 - 2.30GB/s[K  |#############################################     | 573/643 - 2.36GB/s[K  |################################################# | 620/643 - 2.40GB/s[K  |##################################################| 643/643 - 2.48GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 2.44s (read: 2.03s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.22s)
+[INFO ]   |==>                                               | 1/20 - 10.61s/it[K  |=====>                                            | 2/20 - 7.24s/it[K  |=======>                                          | 3/20 - 7.24s/it[K  |==========>                                       | 4/20 - 7.24s/it[K  |============>                                     | 5/20 - 7.24s/it[K  |===============>                                  | 6/20 - 7.24s/it[K  |=================>                                | 7/20 - 7.24s/it[K  |====================>                             | 8/20 - 7.24s/it[K  |======================>                           | 9/20 - 7.24s/it[K  |=========================>                        | 10/20 - 7.24s/it[K  |===========================>                      | 11/20 - 7.24s/it[K  |==============================>                   | 12/20 - 7.24s/it[K  |================================>                 | 13/20 - 7.24s/it[K  |===================================>              | 14/20 - 7.26s/it[K  |=====================================>            | 15/20 - 7.24s/it[K  |========================================>         | 16/20 - 7.24s/it[K  |==========================================>       | 17/20 - 7.24s/it[K  |=============================================>    | 18/20 - 7.26s/it[K  |===============================================>  | 19/20 - 7.28s/it[K  |==================================================| 20/20 - 7.24s/it[K
+stable-diffusion.cpp:5390 - sampling completed, taking 148.43s
+[INFO ] stable-diffusion.cpp:5404 - generating 1 latent images completed, taking 148.43s
+[INFO ] stable-diffusion.cpp:5012 - decoding 1 latents
+[INFO ]   |##################################################| 138/138 - 887.33MB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 0.21s (read: 0.11s, memcpy: 0.00s, convert: 0.03s, copy_to_backend: 0.00s)
+[INFO ] stable-diffusion.cpp:5078 - latent 1 decoded, taking 6.08s
+[INFO ] stable-diffusion.cpp:5082 - decode_first_stage completed, taking 6.08s
+[INFO ] stable-diffusion.cpp:5540 - generate_image completed in 206.15s
+[INFO ] main.cpp:490  - save result image 0 to 'results\images\e043-chroma-apple.png' (success)
+[INFO ] main.cpp:562  - 1/1 images saved
+[INFO ] 

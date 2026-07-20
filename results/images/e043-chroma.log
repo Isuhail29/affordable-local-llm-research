@@ -1,0 +1,29 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 8150 MiB):
+  Device 0: NVIDIA GeForce RTX 5060 Laptop GPU, compute capability 12.0, VMM: yes, VRAM: 8150 MiB
+stable-diffusion.cpp:713  - loading diffusion model from 'models\Chroma1-HD-Q5_K_S.gguf'
+[INFO ] model_loader.cpp:236  - load models\Chroma1-HD-Q5_K_S.gguf using gguf format
+[INFO ] stable-diffusion.cpp:760  - loading t5xxl from 'models\t5xxl-Q5_K_M.gguf'
+[INFO ] model_loader.cpp:236  - load models\t5xxl-Q5_K_M.gguf using gguf format
+[INFO ] stable-diffusion.cpp:789  - loading vae from 'models\flux-ae.safetensors'
+[INFO ] model_loader.cpp:242  - load models\flux-ae.safetensors using safetensors format
+[INFO ] stable-diffusion.cpp:850  - Version: Flux 
+[INFO ] stable-diffusion.cpp:905  - Weight type stat:                      f32: 694  |    q5_K: 372  |    q6_K: 25   |    bf16: 15   
+[INFO ] stable-diffusion.cpp:906  - Conditioner weight type stat:          f32: 50   |    q5_K: 144  |    q6_K: 25   
+[INFO ] stable-diffusion.cpp:907  - Diffusion model weight type stat:      f32: 400  |    q5_K: 228  |    bf16: 15   
+[INFO ] stable-diffusion.cpp:908  - VAE weight type stat:                  f32: 244  
+[INFO ] flux.hpp:1429 - Using pruned modulation (Chroma)
+[INFO ] stable-diffusion.cpp:1381 - using VAE for encoding / decoding
+[INFO ] auto_encoder_kl.hpp:527  - vae decoder: ch = 128
+[INFO ] stable-diffusion.cpp:1620 - total params memory size = 9994.39MB (VRAM 9994.39MB, RAM 0.00MB): text_encoders 3628.02MB(VRAM), diffusion_model 6206.37MB(VRAM), vae 160.00MB(VRAM), controlnet 0.00MB(N/A), extensions 0.00MB(N/A)
+[INFO ] stable-diffusion.cpp:1724 - running in Flux FLOW mode
+[INFO ] stable-diffusion.cpp:5307 - generate_image 1024x1024
+[INFO ] stable-diffusion.cpp:2946 - Using 'flux_kontext' preset for reference images
+[INFO ] denoiser.hpp:1088 - get_sigmas with Flux scheduler
+[INFO ] stable-diffusion.cpp:4144 - sampling using Euler method
+[INFO ]   |#                                                 | 1/219 - 0.00MB/s[K  |###########                                       | 47/219 - 1.70GB/s[K  |####################                              | 87/219 - 2.29GB/s[K  |###############################                   | 132/219 - 2.58GB/s[K  |#########################################         | 179/219 - 2.71GB/s[K  |##################################################| 219/219 - 2.48GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 1.27s (read: 0.82s, memcpy: 0.00s, convert: 0.01s, copy_to_backend: 0.10s)
+[INFO ] stable-diffusion.cpp:4987 - get_learned_condition completed, taking 2.29s
+[INFO ] stable-diffusion.cpp:5358 - generating image: 1/1 - seed 42
+[INFO ]   |#                                                 | 1/643 - 0.00MB/s[K  |#                                                 | 12/643 - 0.00MB/s[K  |#                                                 | 12/643 - 0.00MB/s[K  |######                                            | 69/643 - 666.77MB/s[K  |############                                      | 145/643 - 1.34GB/s[K  |###################                               | 239/643 - 1.74GB/s[K  |##########################                        | 333/643 - 2.00GB/s[K  |###################################               | 439/643 - 2.22GB/s[K  |#######################################           | 493/643 - 2.32GB/s[K  |###########################################       | 549/643 - 2.44GB/s[K  |################################################  | 609/643 - 2.56GB/s[K  |##################################################| 643/643 - 2.68GB/s[K
+model_loader.cpp:1280 - loading tensors completed, taking 2.26s (read: 1.54s, memcpy: 0.00s, convert: 0.00s, copy_to_backend: 0.57s)
+[INFO ]   |==>                                               | 1/20 - 601.24s/it[K  |=====>                                            | 2/20 - 590.13s/it[K  |=======>                                          | 3/20 - 589.53s/it[K  |==========>                                       | 4/20 - 590.66s/it[K  |============>                                     | 5/20 - 590.17s/it[K  |===============>                                  | 6/20 - 590.25s/it[K  |=================>                                | 7/20 - 589.90s/it[K  |====================>                             | 8/20 - 590.32s/it[K  |======================>                           | 9/20 - 590.21s/it[K  |=========================>                        | 10/20 - 589.90s/it[K  |===========================>                      | 11/20 - 589.61s/it[K  |==============================>                   | 12/20 - 567.59s/it[K  |================================>                 | 13/20 - 560.85s/it[K  |===================================>              | 14/20 - 583.32s/it[K  |=====================================>            | 15/20 - 583.53s/it[K  |========================================>         | 16/20 - 584.72s/it[K  |==========================================>       | 17/20 - 22874.86s/it[K
