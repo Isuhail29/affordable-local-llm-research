@@ -30,7 +30,16 @@
 4. Open your project folder and start asking it to read, write, and edit code.
 5. Ignore the "Free" models at the top of opencode's list: those run on opencode's cloud servers, not your machine.
 
-## Generating images (uncensored)
+## Generating images (uncensored) - EASIEST: Image Studio
+
+The simplest way, a dedicated page built for your GPU:
+
+1. **Close the AI Hub** if it has a model loaded (image gen and big LLMs share the 8 GB GPU).
+2. Double-click **Start-Image-Studio.bat**. Your browser opens at `http://127.0.0.1:8090`.
+3. Pick a model from the dropdown (Pony = art, Juggernaut = photo, Chroma = best quality), type a prompt, set size/steps, click **Generate**. The image appears on the page.
+4. Switching models reloads (~20s); staying on one model is fast. Pony's `score_` tags are added for you automatically.
+
+## Generating images in Open WebUI (advanced, optional)
 
 1. **Close the AI Hub first** if it has a model loaded (image gen and big LLMs share the 8 GB GPU).
 2. Double-click **Start-ImageGen.bat**. Keep its window open. It serves at http://127.0.0.1:8082/v1.
